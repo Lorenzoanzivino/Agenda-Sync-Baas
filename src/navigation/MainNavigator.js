@@ -1,6 +1,6 @@
 import React from "react";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
-import PrivateHomeScreen from "../screens/PrivateHomeScreen";
+import PrivateNavigator from "./PrivateNavigator";
 import SharedHomeScreen from "../screens/SharedHomeScreen";
 
 const Tab = createMaterialTopTabNavigator();
@@ -12,8 +12,8 @@ export default function MainNavigator() {
         tabBarStyle: { display: "none" },
       }}
     >
-      <Tab.Screen name="PrivateHome" component={PrivateHomeScreen} />
-      <Tab.Screen name="SharedHome" component={SharedHomeScreen} />
+      <Tab.Screen name="PrivateArea" component={PrivateNavigator} />
+      <Tab.Screen name="SharedArea" component={SharedHomeScreen} />
     </Tab.Navigator>
   );
 }
