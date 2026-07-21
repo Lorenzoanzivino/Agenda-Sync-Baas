@@ -26,7 +26,7 @@ import { theme } from "../constants/theme";
 import { useAuthStore } from "../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
-export default function SharedHomeScreen() {
+export default function SchermataGestioneCondivisa() {
   const { user, activeSharedCalendarId, setActiveSharedCalendarId } =
     useAuthStore();
 
@@ -40,24 +40,19 @@ export default function SharedHomeScreen() {
 
   const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
-  // 1. Ascolto in tempo reale dei calendari condivisi di cui l'utente è membro
   useEffect(() => {
     if (!user) return;
-
     const q = query(
       collection(db, "shared_calendars"),
       where("members", "array-contains", user.uid),
     );
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const calendars = [];
-      snapshot.forEach((document) => {
-        calendars.push({ id: document.id, ...document.data() });
-      });
-
+      snapshot.forEach((document) =>
+        calendars.push({ id: document.id, ...document.data() }),
+      );
       setMySharedCalendars(calendars);
 
-      // Se non c'è un calendario attivo selezionato ma ne esiste almeno uno, seleziona il primo
       if (calendars.length > 0) {
         const isStillValid = calendars.some(
           (c) => c.id === activeSharedCalendarId,
@@ -69,11 +64,9 @@ export default function SharedHomeScreen() {
         setActiveSharedCalendarId(null);
       }
     });
-
     return () => unsubscribe();
   }, [user, activeSharedCalendarId]);
 
-  // 2. Mantiene aggiornati i dettagli del calendario attivo
   useEffect(() => {
     if (activeSharedCalendarId && mySharedCalendars.length > 0) {
       const current = mySharedCalendars.find(
@@ -85,16 +78,10 @@ export default function SharedHomeScreen() {
     }
   }, [activeSharedCalendarId, mySharedCalendars]);
 
-  // Creazione di un nuovo calendario condiviso
   const handleCreateCalendar = async () => {
-    if (!newCalendarName.trim()) {
-      setErrorMsg("Inserisci un nome per il calendario");
-      return;
-    }
-
+    if (!newCalendarName.trim()) return;
     setLoading(true);
     setErrorMsg("");
-
     try {
       const docRef = await addDoc(collection(db, "shared_calendars"), {
         name: newCalendarName.trim(),
@@ -102,80 +89,57 @@ export default function SharedHomeScreen() {
         members: [user.uid],
         createdAt: new Date().toISOString(),
       });
-
       setNewCalendarName("");
       setActiveSharedCalendarId(docRef.id);
     } catch (error) {
-      console.error("Errore creazione calendario:", error);
       setErrorMsg("Errore durante la creazione del calendario.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Partecipazione a un calendario tramite OTP
   const handleJoinCalendar = async () => {
     const cleanOtp = otpInput.trim();
-    if (!cleanOtp) {
-      setErrorMsg("Inserisci il codice OTP");
-      return;
-    }
-
+    if (!cleanOtp) return;
     setLoading(true);
     setErrorMsg("");
-
     try {
       const calRef = doc(db, "shared_calendars", cleanOtp);
       const calSnap = await getDoc(calRef);
 
       if (!calSnap.exists()) {
-        setErrorMsg("Codice OTP non valido o calendario inesistente");
+        setErrorMsg("Codice OTP non valido");
         setLoading(false);
         return;
       }
 
       const calData = calSnap.data();
       if (calData.members && calData.members.includes(user.uid)) {
-        setErrorMsg("Sei già membro di questo calendario");
+        setErrorMsg("Sei già membro");
         setActiveSharedCalendarId(cleanOtp);
         setOtpInput("");
         setLoading(false);
         return;
       }
 
-      // Aggiunge l'utente all'array dei membri
-      await updateDoc(calRef, {
-        members: arrayUnion(user.uid),
-      });
-
+      await updateDoc(calRef, { members: arrayUnion(user.uid) });
       setOtpInput("");
       setActiveSharedCalendarId(cleanOtp);
     } catch (error) {
-      console.error("Errore partecipazione calendario:", error);
       setErrorMsg("Impossibile unirse al calendario.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Abbandono del calendario condiviso
   const handleLeaveCalendar = async () => {
     if (!activeSharedCalendarId) return;
-
-    if (
-      window.confirm(
-        "Sei sicuro di voler uscire da questo calendario condiviso?",
-      )
-    ) {
+    if (window.confirm("Vuoi uscire da questo calendario condiviso?")) {
       try {
         const calRef = doc(db, "shared_calendars", activeSharedCalendarId);
-        await updateDoc(calRef, {
-          members: arrayRemove(user.uid),
-        });
+        await updateDoc(calRef, { members: arrayRemove(user.uid) });
         setIsInfoModalVisible(false);
-      } catch (error) {
-        console.error("Errore abbandono calendario:", error);
-      }
+      } catch (error) {}
     }
   };
 
@@ -192,9 +156,8 @@ export default function SharedHomeScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Header Schermata Condivisa */}
       <View style={styles.header}>
-        <Text style={styles.title}>Area Condivisa</Text>
+        <Text style={styles.title}>Gestione</Text>
         {activeCalendarData ? (
           <TouchableOpacity
             onPress={() => setIsInfoModalVisible(true)}
@@ -215,8 +178,7 @@ export default function SharedHomeScreen() {
         </View>
       ) : null}
 
-      <ScrollView style={styles.scrollContent}>
-        {/* Selettore Calendario Attivo (se ce n'è più di uno) */}
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {mySharedCalendars.length > 0 ? (
           <View style={styles.sectionBox}>
             <Text style={styles.sectionLabel}>I Tuoi Calendari Condivisi:</Text>
@@ -249,7 +211,6 @@ export default function SharedHomeScreen() {
           </View>
         ) : null}
 
-        {/* Card Dettaglio Calendario Corrente */}
         {activeCalendarData ? (
           <View style={styles.activeCard}>
             <Text style={styles.activeCardTitle}>
@@ -258,7 +219,6 @@ export default function SharedHomeScreen() {
             <Text style={styles.activeCardSub}>
               Membri collegati: {activeCalendarData.members?.length || 1}
             </Text>
-
             <TouchableOpacity
               style={styles.otpBox}
               onPress={copyOtpToClipboard}
@@ -279,13 +239,11 @@ export default function SharedHomeScreen() {
         ) : (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>
-              Non sei ancora collegato a nessun calendario condiviso. Creane uno
-              o inserisci un codice OTP.
+              Non sei collegato a nessun calendario condiviso.
             </Text>
           </View>
         )}
 
-        {/* Box per Creare o Partecipare */}
         <View style={styles.actionCard}>
           <Text style={styles.cardHeaderTitle}>Crea Nuovo Calendario</Text>
           <TextInput
@@ -324,19 +282,12 @@ export default function SharedHomeScreen() {
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonTextSecondary}>
-                Unisciti al Calendario
-              </Text>
+              <Text style={styles.buttonTextSecondary}>Unisciti</Text>
             )}
           </TouchableOpacity>
         </View>
       </ScrollView>
 
-      <Text style={styles.hint}>
-        ← Fai swipe verso destra per l'Area Privata
-      </Text>
-
-      {/* Modale Informazioni Calendario */}
       <Modal
         visible={isInfoModalVisible}
         transparent={true}
@@ -352,24 +303,22 @@ export default function SharedHomeScreen() {
                   {activeCalendarData.name}
                 </Text>
                 <Text style={styles.modalText}>
-                  <Text style={{ fontWeight: "bold" }}>Codice OTP:</Text>{" "}
+                  <Text style={{ fontWeight: "bold" }}>OTP:</Text>{" "}
                   {activeSharedCalendarId}
                 </Text>
                 <Text style={styles.modalText}>
-                  <Text style={{ fontWeight: "bold" }}>Totale Membri:</Text>{" "}
+                  <Text style={{ fontWeight: "bold" }}>Membri:</Text>{" "}
                   {activeCalendarData.members?.length || 1}
                 </Text>
               </>
             ) : null}
-
             <View style={styles.modalButtonRow}>
               <TouchableOpacity
                 style={styles.leaveButton}
                 onPress={handleLeaveCalendar}
               >
-                <Text style={styles.leaveButtonText}>Esci dal Calendario</Text>
+                <Text style={styles.leaveButtonText}>Esci</Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 style={styles.closeModalButton}
                 onPress={() => setIsInfoModalVisible(false)}
@@ -402,9 +351,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: theme.colors.primaryShared,
   },
-  infoButton: {
-    padding: 4,
-  },
+  infoButton: { padding: 4 },
   errorBanner: {
     backgroundColor: "#FFE5E5",
     padding: theme.spacing.m,
@@ -417,21 +364,15 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
   },
-  scrollContent: {
-    paddingHorizontal: theme.spacing.l,
-  },
-  sectionBox: {
-    marginBottom: theme.spacing.m,
-  },
+  scrollContent: { paddingHorizontal: theme.spacing.l, paddingBottom: 100 },
+  sectionBox: { marginBottom: theme.spacing.m },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "bold",
     color: theme.colors.textSecondary,
     marginBottom: theme.spacing.s,
   },
-  chipsRow: {
-    flexDirection: "row",
-  },
+  chipsRow: { flexDirection: "row" },
   chip: {
     backgroundColor: theme.colors.cardBackground,
     paddingVertical: 8,
@@ -445,14 +386,8 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.primaryShared,
     backgroundColor: "#FFE0B2",
   },
-  chipText: {
-    fontSize: 14,
-    color: theme.colors.textMain,
-  },
-  chipTextActive: {
-    fontWeight: "bold",
-    color: theme.colors.primaryShared,
-  },
+  chipText: { fontSize: 14, color: theme.colors.textMain },
+  chipTextActive: { fontWeight: "bold", color: theme.colors.primaryShared },
   activeCard: {
     backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.borderRadius.card,
@@ -527,11 +462,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.button,
     alignItems: "center",
   },
-  buttonText: {
-    color: "#FFF",
-    fontWeight: "bold",
-    fontSize: 16,
-  },
+  buttonText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
   buttonSecondary: {
     backgroundColor: theme.colors.sharedBackground,
     padding: theme.spacing.m,
@@ -544,12 +475,6 @@ const styles = StyleSheet.create({
     color: theme.colors.primaryShared,
     fontWeight: "bold",
     fontSize: 16,
-  },
-  hint: {
-    textAlign: "center",
-    marginVertical: theme.spacing.m,
-    color: theme.colors.textSecondary,
-    fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
@@ -569,10 +494,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textMain,
     textAlign: "center",
   },
-  modalText: {
-    fontSize: 16,
-    color: theme.colors.textMain,
-  },
+  modalText: { fontSize: 16, color: theme.colors.textMain },
   modalButtonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -586,10 +508,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
-  leaveButtonText: {
-    color: theme.colors.error,
-    fontWeight: "bold",
-  },
+  leaveButtonText: { color: theme.colors.error, fontWeight: "bold" },
   closeModalButton: {
     backgroundColor: theme.colors.sharedBackground,
     padding: theme.spacing.m,
@@ -597,8 +516,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
-  closeModalButtonText: {
-    color: theme.colors.textMain,
-    fontWeight: "bold",
-  },
+  closeModalButtonText: { color: theme.colors.textMain, fontWeight: "bold" },
 });
