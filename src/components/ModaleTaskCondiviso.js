@@ -10,11 +10,20 @@ import {
   Switch,
   ScrollView,
 } from "react-native";
-import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
 import { db } from "../config/firebase";
 import { theme } from "../constants/theme";
 import { useAuthStore } from "../store/useAuthStore";
 import TimePickerModal from "./TimePickerModal";
+import { inviaNotificaIscritti } from "../utils/notificheUtils";
 
 const TASK_COLORS = ["#0A84FF", "#34C759", "#FF3B30", "#AF52DE", "#FF9500"];
 
@@ -36,8 +45,32 @@ export default function ModaleTaskCondiviso({
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
 
+  const [fixedTasksList, setFixedTasksList] = useState([]);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState("start");
+
+  // Nome Utente (es. mariorossi@gmail.com -> mariorossi)
+  const nomeUtente = user?.email?.split("@")[0] || "Un membro";
+
+  // Caricamento dei task fissi personali per compilarli nel modale condiviso
+  useEffect(() => {
+    if (!user || !visible || taskToEdit) return;
+    const fetchFixed = async () => {
+      try {
+        const q = query(
+          collection(db, "fixed_tasks"),
+          where("userId", "==", user.uid),
+        );
+        const snap = await getDocs(q);
+        const list = [];
+        snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
+        setFixedTasksList(list);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchFixed();
+  }, [user, visible, taskToEdit]);
 
   useEffect(() => {
     if (taskToEdit) {
@@ -59,6 +92,16 @@ export default function ModaleTaskCondiviso({
     }
     setErrorMsg("");
   }, [taskToEdit, visible, selectedDate]);
+
+  const handleSelectTemplate = (template) => {
+    setTitle(template.title || "");
+    setColor(template.color || TASK_COLORS[0]);
+    setIsAllDay(template.isAllDay ?? true);
+    setStartTime(template.startTime || "09:00");
+    setEndTime(template.endTime || "10:00");
+    setDescription(template.description || "");
+    setUrl(template.url || "");
+  };
 
   const handleSave = async () => {
     if (!title.trim() || !activeSharedCalendarId) return;
@@ -92,6 +135,13 @@ export default function ModaleTaskCondiviso({
     try {
       if (taskToEdit) {
         await updateDoc(doc(db, "shared_tasks", taskToEdit.id), taskData);
+        await inviaNotificaIscritti({
+          calendarId: activeSharedCalendarId,
+          currentUserId: user.uid,
+          title: "Evento Modificato",
+          message: `${nomeUtente} ha modificato l'evento "${title.trim()}".`,
+          targetDate: selectedDate,
+        });
       } else {
         await addDoc(collection(db, "shared_tasks"), {
           ...taskData,
@@ -100,6 +150,13 @@ export default function ModaleTaskCondiviso({
           date: selectedDate,
           isCompleted: false,
           createdAt: new Date().toISOString(),
+        });
+        await inviaNotificaIscritti({
+          calendarId: activeSharedCalendarId,
+          currentUserId: user.uid,
+          title: "Nuovo Evento Condiviso",
+          message: `${nomeUtente} ha aggiunto l'evento "${title.trim()}".`,
+          targetDate: selectedDate,
         });
       }
       onClose();
@@ -150,6 +207,30 @@ export default function ModaleTaskCondiviso({
           ) : null}
 
           <ScrollView style={styles.scrollArea}>
+            {!taskToEdit && fixedTasksList.length > 0 ? (
+              <View style={styles.templatePickerBox}>
+                <Text style={styles.label}>Importa da Evento Fisso:</Text>
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  style={styles.templateChipsRow}
+                >
+                  {fixedTasksList.map((ft) => (
+                    <TouchableOpacity
+                      key={ft.id}
+                      style={[styles.templateChip, { borderColor: ft.color }]}
+                      onPress={() => handleSelectTemplate(ft)}
+                    >
+                      <View
+                        style={[styles.chipDot, { backgroundColor: ft.color }]}
+                      />
+                      <Text style={styles.chipText}>{ft.title}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+
             <TextInput
               style={styles.input}
               placeholder="Titolo *"
@@ -284,6 +365,37 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 14,
+  },
+  templatePickerBox: {
+    marginBottom: theme.spacing.m,
+    backgroundColor: theme.colors.sharedBackground,
+    padding: theme.spacing.s,
+    borderRadius: theme.borderRadius.input,
+  },
+  templateChipsRow: {
+    flexDirection: "row",
+    marginTop: 4,
+  },
+  templateChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.cardBackground,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginRight: 8,
+  },
+  chipDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 6,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: "600",
+    color: theme.colors.textMain,
   },
   scrollArea: { marginBottom: theme.spacing.m },
   input: {

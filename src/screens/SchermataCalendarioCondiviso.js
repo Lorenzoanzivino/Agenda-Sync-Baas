@@ -8,17 +8,18 @@ import {
   ActivityIndicator,
   Linking,
 } from "react-native";
+import { useRoute, useNavigation } from "@react-navigation/native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import {
   collection,
   query,
   where,
+  getDocs,
   onSnapshot,
   addDoc,
   doc,
   deleteDoc,
   writeBatch,
-  getDocs,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { theme } from "../constants/theme";
@@ -29,6 +30,7 @@ import ModaleDettagliCondiviso from "../components/ModaleDettagliCondiviso";
 import ModaleTaskCondiviso from "../components/ModaleTaskCondiviso";
 import FixedTaskModal from "../components/FixedTaskModal";
 import CampanellaNotifiche from "../components/CampanellaNotifiche";
+import { inviaNotificaIscritti } from "../utils/notificheUtils";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
@@ -74,20 +76,20 @@ LocaleConfig.locales["it"] = {
 LocaleConfig.defaultLocale = "it";
 
 export default function SchermataCalendarioCondiviso() {
-  const { user, activeSharedCalendarId } = useAuthStore();
-  const [calendarName, setCalendarName] = useState("");
+  const { user, activeSharedCalendarId, setActiveSharedCalendarId } =
+    useAuthStore();
+  const route = useRoute();
+  const navigation = useNavigation();
 
-  // Tasks Correnti e Template Fissi Personali
+  const [calendarName, setCalendarName] = useState("");
   const [allSharedTasks, setAllSharedTasks] = useState([]);
   const [personalFixedTasks, setPersonalFixedTasks] = useState([]);
 
-  // Batch Insert States
   const [selectedDates, setSelectedDates] = useState({});
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [isInserting, setIsInserting] = useState(false);
   const [errorBanner, setErrorBanner] = useState("");
 
-  // Modal States
   const [isDayModalVisible, setIsDayModalVisible] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
   const [dayTasks, setDayTasks] = useState([]);
@@ -98,7 +100,34 @@ export default function SchermataCalendarioCondiviso() {
   const [isFixedModalVisible, setFixedModalVisible] = useState(false);
   const [templateToEdit, setTemplateToEdit] = useState(null);
 
-  // Fetch nome calendario
+  const nomeUtente = user?.email?.split("@")[0] || "Un membro";
+
+  // Gestione Navigazione dalla Notifica In-App
+  useEffect(() => {
+    if (route.params?.selectedDateToOpen) {
+      setSelectedDayDate(route.params.selectedDateToOpen);
+      setIsDayModalVisible(true);
+      // Puliamo il parametro per non far riaprire la modale al re-render
+      navigation.setParams({ selectedDateToOpen: undefined });
+    }
+  }, [route.params?.selectedDateToOpen]);
+
+  // AUTO-SELEZIONE DEL CALENDARIO (Se atterri qui direttamente)
+  useEffect(() => {
+    if (!user || activeSharedCalendarId) return;
+    const fetchFirstCalendar = async () => {
+      const q = query(
+        collection(db, "shared_calendars"),
+        where("members", "array-contains", user.uid),
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        setActiveSharedCalendarId(snap.docs[0].id);
+      }
+    };
+    fetchFirstCalendar();
+  }, [user, activeSharedCalendarId]);
+
   useEffect(() => {
     if (!activeSharedCalendarId) return;
     const unsubscribeCal = onSnapshot(
@@ -110,7 +139,6 @@ export default function SchermataCalendarioCondiviso() {
     return () => unsubscribeCal();
   }, [activeSharedCalendarId]);
 
-  // Fetch tutti i task del calendario
   useEffect(() => {
     if (!activeSharedCalendarId) return;
     const q = query(
@@ -127,7 +155,6 @@ export default function SchermataCalendarioCondiviso() {
     return () => unsubscribe();
   }, [activeSharedCalendarId]);
 
-  // Fetch tutti i task FISSI PERSONALI dell'utente
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -144,7 +171,6 @@ export default function SchermataCalendarioCondiviso() {
     return () => unsubscribe();
   }, [user]);
 
-  // Fetch task della giornata selezionata
   useEffect(() => {
     if (!activeSharedCalendarId || !selectedDayDate) return;
     const q = query(
@@ -175,7 +201,6 @@ export default function SchermataCalendarioCondiviso() {
     });
 
     Object.keys(countsByDate).forEach((dateStr) => {
-      const count = countsByDate[dateStr];
       if (!marks[dateStr]) marks[dateStr] = {};
       marks[dateStr] = {
         ...marks[dateStr],
@@ -274,6 +299,15 @@ export default function SchermataCalendarioCondiviso() {
           }),
         ),
       );
+
+      await inviaNotificaIscritti({
+        calendarId: activeSharedCalendarId,
+        currentUserId: user.uid,
+        title: "Nuovi Eventi Ricorrenti",
+        message: `${nomeUtente} ha inserito l'evento "${template.title}" su ${datesToInsert.length} date.`,
+        targetDate: datesToInsert[0],
+      });
+
       setSelectedDates({});
       setSelectedTemplateId(null);
       alert("Eventi inseriti con successo nel calendario del gruppo!");
@@ -311,6 +345,15 @@ export default function SchermataCalendarioCondiviso() {
           batch.delete(doc(db, "shared_tasks", t.id)),
         );
         await batch.commit();
+
+        await inviaNotificaIscritti({
+          calendarId: activeSharedCalendarId,
+          currentUserId: user.uid,
+          title: "Reset Calendario",
+          message: `Il calendario "${calendarName}" è stato interamente svuotato da ${nomeUtente}.`,
+          targetDate: new Date().toISOString().split("T")[0],
+        });
+
         setSelectedDates({});
         setSelectedTemplateId(null);
       } catch (e) {
@@ -326,6 +369,14 @@ export default function SchermataCalendarioCondiviso() {
         const batch = writeBatch(db);
         dayTasks.forEach((dt) => batch.delete(doc(db, "shared_tasks", dt.id)));
         await batch.commit();
+
+        await inviaNotificaIscritti({
+          calendarId: activeSharedCalendarId,
+          currentUserId: user.uid,
+          title: "Reset Giornata",
+          message: `I task del giorno ${selectedDayDate} sono stati svuotati da ${nomeUtente}.`,
+          targetDate: selectedDayDate,
+        });
       } catch (e) {
         console.error(e);
       }
@@ -350,7 +401,7 @@ export default function SchermataCalendarioCondiviso() {
       <View style={styles.container}>
         <Text style={styles.title}>Calendario</Text>
         <Text style={styles.emptyText}>
-          Seleziona o crea un calendario condiviso nella sezione Gestione.
+          Nessun calendario collegato. Vai nella sezione Gestione.
         </Text>
       </View>
     );
@@ -583,8 +634,16 @@ export default function SchermataCalendarioCondiviso() {
           setIsTaskModalVisible(true);
         }}
         onDeleteTask={async (taskId) => {
-          if (window.confirm("Vuoi eliminare questo task condiviso?"))
+          if (window.confirm("Vuoi eliminare questo task condiviso?")) {
             await deleteDoc(doc(db, "shared_tasks", taskId));
+            await inviaNotificaIscritti({
+              calendarId: activeSharedCalendarId,
+              currentUserId: user.uid,
+              title: "Evento Eliminato",
+              message: `${nomeUtente} ha eliminato un evento condiviso.`,
+              targetDate: selectedDayDate,
+            });
+          }
         }}
         onOpenUrl={openUrl}
       />

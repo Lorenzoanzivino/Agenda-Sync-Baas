@@ -9,34 +9,30 @@ Per ogni task di implementazione (dalla **Fase 3** alla **Fase 6**) è obbligato
 3. Eventuali test del task.
 4. Salvataggio delle modifiche:
 
-
-    ```bash
-    git add .
-    ```
+   ```bash
+   git add .
+   ```
 
 5. Commit:
 
-
-    ```bash
-    git commit -m "messaggio del commit"
-    ```
+   ```bash
+   git commit -m "messaggio del commit"
+   ```
 
 6. Push del branch remoto:
 
-
-    ```bash
-    git push -u origin <nome-branch>
-    ```
+   ```bash
+   git push -u origin <nome-branch>
+   ```
 
 7. Apertura della **Pull Request** verso `develop`.
 8. Merge della Pull Request.
 9. Allineamento del branch locale:
 
-
-    ```bash
-    git checkout develop
-    git pull origin develop
-    ```
+   ```bash
+   git checkout develop
+   git pull origin develop
+   ```
 
 10. Eliminazione del feature branch locale e remoto.
 
@@ -291,20 +287,20 @@ Implementazione della sincronizzazione realtime tramite Firestore.
 
 # Fase 6 – Implementazione: Notifiche Push
 
-## Task 6.1 – Setup Push Notifications
+# Fase 6 – Implementazione: Notifiche In-App (Area Condivisa)
 
-- Configurazione di Expo Push Notifications.
-- Salvataggio del Push Token nel documento utente su Firestore.
+## Task 6.1 – Trigger e Generazione Notifiche
 
----
+- Creazione della funzione di utilità per inviare notifiche in-app agli altri membri di un calendario condiviso.
+- Generazione automatica di un record in `inapp_notifications` alla creazione, modifica o eliminazione di un task condiviso.
+- Generazione notifiche in-app durante l'inserimento batch di task fissi.
 
-## Task 6.2 – Invio Notifiche
+## Task 6.2 – Visualizzazione e Navigazione
 
-Implementazione della logica che:
-
-- intercetta la creazione di un task condiviso;
-- invia una richiesta HTTP ai server Expo;
-- notifica gli altri utenti appartenenti allo stesso calendario.
+- Integrazione della campanella (`CampanellaNotifiche.js`) negli header dell'area condivisa.
+- Conteggio in tempo reale delle notifiche non lette.
+- Navigazione diretta alla data dell'evento quando si clicca su una notifica.
+- Funzione di svuotamento singolo o globale delle notifiche.
 
 ---
 
