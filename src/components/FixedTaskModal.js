@@ -10,21 +10,24 @@ import {
   Switch,
   ScrollView,
 } from "react-native";
-import { collection, addDoc, updateDoc, doc, getDocs, query, where } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
+  query,
+  where,
+  getDocs,
+  writeBatch,
+} from "firebase/firestore";
 import { db } from "../config/firebase";
 import { theme } from "../constants/theme";
 import { useAuthStore } from "../store/useAuthStore";
 import TimePickerModal from "./TimePickerModal";
-import { Ionicons } from "@expo/vector-icons";
 
 const TASK_COLORS = ["#0A84FF", "#34C759", "#FF3B30", "#AF52DE", "#FF9500"];
 
-export default function TaskModal({
-  visible,
-  onClose,
-  selectedDate,
-  taskToEdit,
-}) {
+export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -37,38 +40,18 @@ export default function TaskModal({
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
 
-  // Lista dei task fissi per l'autocompilazione rapida
-  const [fixedTasksList, setFixedTasksList] = useState([]);
-
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState("start");
 
-  // Fetch dei task fissi dell'utente per il menu di scelta rapida
   useEffect(() => {
-    if (!user || !visible || taskToEdit) return;
-    const fetchFixed = async () => {
-      try {
-        const q = query(collection(db, "fixed_tasks"), where("userId", "==", user.uid));
-        const snap = await getDocs(q);
-        const list = [];
-        snap.forEach(d => list.push({ id: d.id, ...d.data() }));
-        setFixedTasksList(list);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchFixed();
-  }, [user, visible, taskToEdit]);
-
-  useEffect(() => {
-    if (taskToEdit) {
-      setTitle(taskToEdit.title || "");
-      setColor(taskToEdit.color || TASK_COLORS[0]);
-      setIsAllDay(taskToEdit.isAllDay ?? true);
-      setStartTime(taskToEdit.startTime || "09:00");
-      setEndTime(taskToEdit.endTime || "10:00");
-      setDescription(taskToEdit.description || "");
-      setUrl(taskToEdit.url || "");
+    if (templateToEdit) {
+      setTitle(templateToEdit.title || "");
+      setColor(templateToEdit.color || TASK_COLORS[0]);
+      setIsAllDay(templateToEdit.isAllDay ?? true);
+      setStartTime(templateToEdit.startTime || "09:00");
+      setEndTime(templateToEdit.endTime || "10:00");
+      setDescription(templateToEdit.description || "");
+      setUrl(templateToEdit.url || "");
     } else {
       setTitle("");
       setColor(TASK_COLORS[0]);
@@ -79,17 +62,7 @@ export default function TaskModal({
       setUrl("");
     }
     setErrorMsg("");
-  }, [taskToEdit, visible, selectedDate]);
-
-  const handleSelectTemplate = (template) => {
-    setTitle(template.title || "");
-    setColor(template.color || TASK_COLORS[0]);
-    setIsAllDay(template.isAllDay ?? true);
-    setStartTime(template.startTime || "09:00");
-    setEndTime(template.endTime || "10:00");
-    setDescription(template.description || "");
-    setUrl(template.url || "");
-  };
+  }, [templateToEdit, visible]);
 
   const handleSave = async () => {
     if (!title.trim()) return;
@@ -100,9 +73,8 @@ export default function TaskModal({
         parseInt(startTime.split(":")[1]);
       const endTotal =
         parseInt(endTime.split(":")[0]) * 60 + parseInt(endTime.split(":")[1]);
-
       if (startTotal > endTotal) {
-        setErrorMsg("La data di inizio non può essere maggiore della fine");
+        setErrorMsg("L'ora di inizio non può superare la fine");
         return;
       }
     }
@@ -110,7 +82,7 @@ export default function TaskModal({
     setLoading(true);
     setErrorMsg("");
 
-    const taskData = {
+    const templateData = {
       title: title.trim(),
       color: color,
       isAllDay: isAllDay,
@@ -121,20 +93,38 @@ export default function TaskModal({
     };
 
     try {
-      if (taskToEdit) {
-        await updateDoc(doc(db, "private_tasks", taskToEdit.id), taskData);
+      if (templateToEdit) {
+        // 1. Aggiorna il template fisso
+        await updateDoc(
+          doc(db, "fixed_tasks", templateToEdit.id),
+          templateData,
+        );
+
+        // 2. Aggiorna in automatico tutti i task privati generati da questo template
+        const qTasks = query(
+          collection(db, "private_tasks"),
+          where("userId", "==", user.uid),
+          where("templateId", "==", templateToEdit.id),
+        );
+        const querySnapshot = await getDocs(qTasks);
+
+        if (!querySnapshot.empty) {
+          const batch = writeBatch(db);
+          querySnapshot.forEach((document) => {
+            batch.update(document.ref, templateData);
+          });
+          await batch.commit();
+        }
       } else {
-        await addDoc(collection(db, "private_tasks"), {
-          ...taskData,
+        await addDoc(collection(db, "fixed_tasks"), {
+          ...templateData,
           userId: user.uid,
-          date: selectedDate,
-          isCompleted: false,
           createdAt: new Date().toISOString(),
         });
       }
       onClose();
     } catch (error) {
-      console.error("Errore salvataggio task:", error);
+      console.error("Errore salvataggio template:", error);
     } finally {
       setLoading(false);
     }
@@ -146,11 +136,8 @@ export default function TaskModal({
   };
 
   const handleTimeConfirm = (timeStr) => {
-    if (pickerTarget === "start") {
-      setStartTime(timeStr);
-    } else {
-      setEndTime(timeStr);
-    }
+    if (pickerTarget === "start") setStartTime(timeStr);
+    else setEndTime(timeStr);
     setShowTimePicker(false);
   };
 
@@ -173,37 +160,19 @@ export default function TaskModal({
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>
-            {taskToEdit ? "Modifica Task" : "Nuovo Task"}
+            {templateToEdit ? "Modifica Evento Fisso" : "Nuovo Evento Fisso"}
           </Text>
 
-          {errorMsg !== "" && (
+          {errorMsg !== "" ? (
             <View style={styles.errorBanner}>
               <Text style={styles.errorText}>{errorMsg}</Text>
             </View>
-          )}
+          ) : null}
 
           <ScrollView style={styles.scrollArea}>
-            {!taskToEdit && fixedTasksList.length > 0 ? (
-              <View style={styles.templatePickerBox}>
-                <Text style={styles.label}>Importa da Evento Fisso:</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.templateChipsRow}>
-                  {fixedTasksList.map((ft) => (
-                    <TouchableOpacity
-                      key={ft.id}
-                      style={[styles.templateChip, { borderColor: ft.color }]}
-                      onPress={() => handleSelectTemplate(ft)}
-                    >
-                      <View style={[styles.chipDot, { backgroundColor: ft.color }]} />
-                      <Text style={styles.chipText}>{ft.title}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-            ) : null}
-
             <TextInput
               style={styles.input}
-              placeholder="Titolo *"
+              placeholder="Titolo Evento Fisso *"
               value={title}
               onChangeText={setTitle}
             />
@@ -220,7 +189,7 @@ export default function TaskModal({
               />
             </View>
 
-            {!isAllDay && (
+            {!isAllDay ? (
               <View style={styles.dateRow}>
                 <View style={styles.dateInputContainer}>
                   <Text style={styles.label}>Ora Inizio</Text>
@@ -241,7 +210,7 @@ export default function TaskModal({
                   </TouchableOpacity>
                 </View>
               </View>
-            )}
+            ) : null}
 
             <Text style={styles.label}>Descrizione (Opzionale)</Text>
             <TextInput
@@ -250,7 +219,7 @@ export default function TaskModal({
               value={description}
               onChangeText={setDescription}
               multiline={true}
-              numberOfLines={3}
+              numberOfLines={2}
             />
 
             <Text style={styles.label}>URL (Opzionale)</Text>
@@ -263,7 +232,7 @@ export default function TaskModal({
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>Colore</Text>
+            <Text style={styles.label}>Colore Predefinito</Text>
             <View style={styles.colorContainer}>{renderColorOptions()}</View>
           </ScrollView>
 
@@ -336,40 +305,7 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 14,
   },
-  templatePickerBox: {
-    marginBottom: theme.spacing.m,
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.s,
-    borderRadius: theme.borderRadius.input,
-  },
-  templateChipsRow: {
-    flexDirection: "row",
-    marginTop: 4,
-  },
-  templateChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: theme.colors.cardBackground,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    marginRight: 8,
-  },
-  chipDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginRight: 6,
-  },
-  chipText: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: theme.colors.textMain,
-  },
-  scrollArea: {
-    marginBottom: theme.spacing.m,
-  },
+  scrollArea: { marginBottom: theme.spacing.m },
   input: {
     backgroundColor: theme.colors.privateBackground,
     padding: theme.spacing.m,
@@ -377,10 +313,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: theme.spacing.m,
   },
-  textArea: {
-    minHeight: 80,
-    textAlignVertical: "top",
-  },
+  textArea: { minHeight: 60, textAlignVertical: "top" },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -393,20 +326,14 @@ const styles = StyleSheet.create({
     gap: theme.spacing.m,
     marginBottom: theme.spacing.m,
   },
-  dateInputContainer: {
-    flex: 1,
-  },
+  dateInputContainer: { flex: 1 },
   timeBox: {
     backgroundColor: theme.colors.privateBackground,
     padding: theme.spacing.m,
     borderRadius: theme.borderRadius.input,
     alignItems: "center",
   },
-  timeText: {
-    fontSize: 18,
-    fontWeight: "bold",
-    color: theme.colors.textMain,
-  },
+  timeText: { fontSize: 18, fontWeight: "bold", color: theme.colors.textMain },
   label: {
     fontSize: 14,
     fontWeight: "bold",
@@ -419,31 +346,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.spacing.s,
     marginBottom: theme.spacing.m,
   },
-  colorCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-  selectedColor: {
-    borderWidth: 3,
-    borderColor: theme.colors.textMain,
-  },
+  colorCircle: { width: 32, height: 32, borderRadius: 16 },
+  selectedColor: { borderWidth: 3, borderColor: theme.colors.textMain },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: theme.spacing.m,
     borderTopWidth: 1,
     borderTopColor: theme.colors.privateBackground,
+    gap: theme.spacing.m,
   },
   cancelButton: {
     padding: theme.spacing.m,
     flex: 1,
     alignItems: "center",
+    backgroundColor: theme.colors.privateBackground,
+    borderRadius: theme.borderRadius.button,
   },
-  cancelButtonText: {
-    color: theme.colors.textSecondary,
-    fontWeight: "bold",
-  },
+  cancelButtonText: { color: theme.colors.textSecondary, fontWeight: "bold" },
   saveButton: {
     backgroundColor: theme.colors.primaryPrivate,
     padding: theme.spacing.m,
@@ -451,11 +371,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: "center",
   },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: "#FFF",
-    fontWeight: "bold",
-  },
+  saveButtonDisabled: { opacity: 0.5 },
+  saveButtonText: { color: "#FFF", fontWeight: "bold" },
 });

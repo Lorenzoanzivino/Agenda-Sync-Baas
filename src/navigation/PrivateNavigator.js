@@ -1,6 +1,7 @@
 import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { theme } from "../constants/theme";
 
 import PrivateTodayScreen from "../screens/PrivateTodayScreen";
@@ -9,6 +10,8 @@ import PrivateCalendarScreen from "../screens/PrivateCalendarScreen";
 const Tab = createBottomTabNavigator();
 
 export default function PrivateNavigator() {
+  const insets = useSafeAreaInsets();
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -29,6 +32,13 @@ export default function PrivateNavigator() {
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
+          height: 60 + insets.bottom,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
+          paddingTop: 10,
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500",
         },
       })}
     >

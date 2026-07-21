@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Linking,
-  Alert,
 } from "react-native";
 import {
   collection,
@@ -16,6 +15,8 @@ import {
   doc,
   updateDoc,
   deleteDoc,
+  getDocs,
+  writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
 import { theme } from "../constants/theme";
@@ -71,6 +72,21 @@ export default function PrivateTodayScreen() {
   const deleteTask = async (id) => {
     if (window.confirm("Vuoi davvero eliminare questo task?")) {
       await deleteDoc(doc(db, "private_tasks", id));
+    }
+  };
+
+  const resetTodayTasks = async () => {
+    if (tasks.length === 0) return;
+    if (window.confirm("Sei sicuro di voler svuotare tutti i task di oggi?")) {
+      try {
+        const batch = writeBatch(db);
+        tasks.forEach((t) => {
+          batch.delete(doc(db, "private_tasks", t.id));
+        });
+        await batch.commit();
+      } catch (e) {
+        console.error("Errore reset oggi:", e);
+      }
     }
   };
 
@@ -166,9 +182,18 @@ export default function PrivateTodayScreen() {
                 color={theme.colors.primaryPrivate}
               />
             </TouchableOpacity>
-          ) : (
-            <View style={styles.actionButtonPlaceholder} />
-          )}
+          ) : null}
+
+          <TouchableOpacity
+            onPress={() => openEditTaskModal(task)}
+            style={styles.actionButton}
+          >
+            <Ionicons
+              name="pencil-outline"
+              size={22}
+              color={theme.colors.primaryPrivate}
+            />
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={() => deleteTask(task.id)}
@@ -188,10 +213,26 @@ export default function PrivateTodayScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Oggi</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Text style={styles.title}>Oggi</Text>
+          {tasks.length > 0 ? (
+            <TouchableOpacity
+              onPress={resetTodayTasks}
+              style={styles.resetButton}
+            >
+              <Ionicons
+                name="reload-outline"
+                size={22}
+                color={theme.colors.error}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+
         <TouchableOpacity onPress={() => auth.signOut()}>
           <Ionicons
             name="log-out-outline"
+            size2={28}
             size={28}
             color={theme.colors.error}
           />
@@ -237,6 +278,11 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: "bold",
     color: theme.colors.primaryPrivate,
+  },
+  resetButton: {
+    padding: 6,
+    backgroundColor: "#FFE5E5",
+    borderRadius: 12,
   },
   scrollContent: {
     padding: theme.spacing.l,
@@ -303,16 +349,13 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
   },
   actionsColumn: {
-    flexDirection: "column",
-    justifyContent: "space-between",
+    flexDirection: "row",
     alignItems: "center",
     marginLeft: theme.spacing.s,
   },
   actionButton: {
     padding: 6,
-  },
-  actionButtonPlaceholder: {
-    height: 34, // Altezza approssimativa dell'icona per mantenere allineamento
+    marginLeft: 4,
   },
   fab: {
     position: "absolute",
