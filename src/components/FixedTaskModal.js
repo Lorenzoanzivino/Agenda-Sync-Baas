@@ -100,22 +100,34 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
           templateData,
         );
 
-        // 2. Aggiorna in automatico tutti i task privati generati da questo template
-        const qTasks = query(
+        // 2. Propaga in automatico ai task privati generati da questo template
+        const qPrivate = query(
           collection(db, "private_tasks"),
           where("userId", "==", user.uid),
           where("templateId", "==", templateToEdit.id),
         );
-        const querySnapshot = await getDocs(qTasks);
+        const snapPrivate = await getDocs(qPrivate);
 
-        if (!querySnapshot.empty) {
+        // 3. Propaga in automatico ai task condivisi (creati da questo utente) generati da questo template
+        const qShared = query(
+          collection(db, "shared_tasks"),
+          where("authorId", "==", user.uid),
+          where("templateId", "==", templateToEdit.id),
+        );
+        const snapShared = await getDocs(qShared);
+
+        if (!snapPrivate.empty || !snapShared.empty) {
           const batch = writeBatch(db);
-          querySnapshot.forEach((document) => {
+          snapPrivate.forEach((document) => {
+            batch.update(document.ref, templateData);
+          });
+          snapShared.forEach((document) => {
             batch.update(document.ref, templateData);
           });
           await batch.commit();
         }
       } else {
+        // Se è un nuovo template fisso, lo salviamo in fixed_tasks
         await addDoc(collection(db, "fixed_tasks"), {
           ...templateData,
           userId: user.uid,
@@ -125,6 +137,9 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
       onClose();
     } catch (error) {
       console.error("Errore salvataggio template:", error);
+      setErrorMsg(
+        "Errore nel salvataggio. Controlla i permessi o le connessioni.",
+      );
     } finally {
       setLoading(false);
     }
