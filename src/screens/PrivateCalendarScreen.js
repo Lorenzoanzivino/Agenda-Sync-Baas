@@ -74,6 +74,7 @@ LocaleConfig.defaultLocale = "it";
 
 export default function PrivateCalendarScreen() {
   const { user } = useAuthStore();
+  const todayISO = new Date().toISOString().split("T")[0];
 
   const [fixedTasks, setFixedTasks] = useState([]);
   const [allPrivateTasks, setAllPrivateTasks] = useState([]);
@@ -450,11 +451,13 @@ export default function PrivateCalendarScreen() {
           dayComponent={({ date, state }) => {
             const count = getTaskCountForDate(date.dateString);
             const isSelected = selectedDates[date.dateString]?.selected;
+            const isToday = date.dateString === todayISO;
             return (
               <TouchableOpacity
                 onPress={() => onDayPress(date)}
                 style={[
                   styles.calendarDayCell,
+                  isToday && styles.calendarDayCellToday,
                   isSelected && styles.calendarDayCellSelected,
                 ]}
               >
@@ -463,6 +466,7 @@ export default function PrivateCalendarScreen() {
                     styles.calendarDayText,
                     state === "disabled" && styles.disabledText,
                     isSelected && styles.calendarDayTextSelected,
+                    isToday && !isSelected && styles.calendarDayTextToday,
                   ]}
                 >
                   {date.day}
@@ -632,6 +636,14 @@ const styles = StyleSheet.create({
     margin: 2,
     backgroundColor: theme.colors.privateBackground,
     position: "relative",
+  },
+  calendarDayCellToday: {
+    borderWidth: 2,
+    borderColor: theme.colors.primaryPrivate,
+  },
+  calendarDayTextToday: {
+    color: theme.colors.primaryPrivate,
+    fontWeight: "bold",
   },
   calendarDayCellSelected: {
     backgroundColor: theme.colors.primaryPrivate,

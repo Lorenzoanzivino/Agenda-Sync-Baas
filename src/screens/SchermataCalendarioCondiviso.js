@@ -101,6 +101,7 @@ export default function SchermataCalendarioCondiviso() {
   const [templateToEdit, setTemplateToEdit] = useState(null);
 
   const nomeUtente = user?.email?.split("@")[0] || "Un membro";
+  const todayISO = new Date().toISOString().split("T")[0];
 
   // Gestione Navigazione dalla Notifica In-App
   useEffect(() => {
@@ -351,7 +352,7 @@ export default function SchermataCalendarioCondiviso() {
           currentUserId: user.uid,
           title: "Reset Calendario",
           message: `Il calendario "${calendarName}" è stato interamente svuotato da ${nomeUtente}.`,
-          targetDate: new Date().toISOString().split("T")[0],
+          targetDate: todayISO,
         });
 
         setSelectedDates({});
@@ -532,11 +533,13 @@ export default function SchermataCalendarioCondiviso() {
           dayComponent={({ date, state }) => {
             const count = getTaskCountForDate(date.dateString);
             const isSelected = selectedDates[date.dateString]?.selected;
+            const isToday = date.dateString === todayISO;
             return (
               <TouchableOpacity
                 onPress={() => onDayPress(date)}
                 style={[
                   styles.calendarDayCell,
+                  isToday && styles.calendarDayCellToday,
                   isSelected && styles.calendarDayCellSelected,
                 ]}
               >
@@ -545,6 +548,7 @@ export default function SchermataCalendarioCondiviso() {
                     styles.calendarDayText,
                     state === "disabled" && styles.disabledText,
                     isSelected && styles.calendarDayTextSelected,
+                    isToday && !isSelected && styles.calendarDayTextToday,
                   ]}
                 >
                   {date.day}
@@ -717,6 +721,14 @@ const styles = StyleSheet.create({
     margin: 2,
     backgroundColor: theme.colors.sharedBackground,
     position: "relative",
+  },
+  calendarDayCellToday: {
+    borderWidth: 2,
+    borderColor: theme.colors.primaryShared,
+  },
+  calendarDayTextToday: {
+    color: theme.colors.primaryShared,
+    fontWeight: "bold",
   },
   calendarDayCellSelected: { backgroundColor: theme.colors.primaryShared },
   calendarDayText: {
