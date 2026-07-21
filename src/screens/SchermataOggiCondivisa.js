@@ -7,10 +7,12 @@ import {
   ScrollView,
   Linking,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import {
   collection,
   query,
   where,
+  getDocs,
   onSnapshot,
   doc,
   updateDoc,
@@ -23,9 +25,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useAuthStore";
 import ModaleTaskCondiviso from "../components/ModaleTaskCondiviso";
 import CampanellaNotifiche from "../components/CampanellaNotifiche";
+import { inviaNotificaIscritti } from "../utils/notificheUtils";
 
 export default function SchermataOggiCondivisa() {
-  const { activeSharedCalendarId } = useAuthStore();
+  const { user, activeSharedCalendarId, setActiveSharedCalendarId } =
+    useAuthStore();
+  const navigation = useNavigation();
+
   const [tasks, setTasks] = useState([]);
   const [calendarName, setCalendarName] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
@@ -38,6 +44,24 @@ export default function SchermataOggiCondivisa() {
     month: "long",
   });
   const todayISO = todayObj.toISOString().split("T")[0];
+
+  const nomeUtente = user?.email?.split("@")[0] || "Un membro";
+
+  // AUTO-SELEZIONE DEL CALENDARIO: se apro l'app ed è vuoto, pesco il primo disponibile
+  useEffect(() => {
+    if (!user || activeSharedCalendarId) return;
+    const fetchFirstCalendar = async () => {
+      const q = query(
+        collection(db, "shared_calendars"),
+        where("members", "array-contains", user.uid),
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        setActiveSharedCalendarId(snap.docs[0].id);
+      }
+    };
+    fetchFirstCalendar();
+  }, [user, activeSharedCalendarId]);
 
   // Fetch del nome del calendario attivo
   useEffect(() => {
@@ -85,9 +109,16 @@ export default function SchermataOggiCondivisa() {
     });
   };
 
-  const deleteTask = async (id) => {
+  const deleteTask = async (task) => {
     if (window.confirm("Vuoi davvero eliminare questo task condiviso?")) {
-      await deleteDoc(doc(db, "shared_tasks", id));
+      await deleteDoc(doc(db, "shared_tasks", task.id));
+      await inviaNotificaIscritti({
+        calendarId: activeSharedCalendarId,
+        currentUserId: user.uid,
+        title: "Evento Eliminato",
+        message: `${nomeUtente} ha eliminato l'evento "${task.title}".`,
+        targetDate: todayISO,
+      });
     }
   };
 
@@ -102,6 +133,14 @@ export default function SchermataOggiCondivisa() {
         const batch = writeBatch(db);
         tasks.forEach((t) => batch.delete(doc(db, "shared_tasks", t.id)));
         await batch.commit();
+
+        await inviaNotificaIscritti({
+          calendarId: activeSharedCalendarId,
+          currentUserId: user.uid,
+          title: "Reset Giornaliero",
+          message: `${nomeUtente} ha svuotato tutti i task di oggi (${todayISO}).`,
+          targetDate: todayISO,
+        });
       } catch (e) {
         console.error("Errore reset:", e);
       }
@@ -140,7 +179,7 @@ export default function SchermataOggiCondivisa() {
         </View>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
-            Seleziona o crea un calendario condiviso nella sezione Gestione.
+            Nessun calendario collegato. Vai nella sezione Gestione.
           </Text>
         </View>
       </View>
@@ -169,12 +208,9 @@ export default function SchermataOggiCondivisa() {
           <Text style={styles.headerSubtitle}>Calendario: {calendarName}</Text>
         </View>
 
-        {/* Campanella delle notifiche in-app */}
         <CampanellaNotifiche
           onNavigateToDate={(date) => {
-            // L'integrazione completa del click notifica (navigazione)
-            // avverrà in un task successivo. Per ora la modale si chiude.
-            console.log("Naviga alla data: ", date);
+            navigation.navigate("Calendario", { selectedDateToOpen: date });
           }}
         />
       </View>
@@ -264,7 +300,7 @@ export default function SchermataOggiCondivisa() {
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
-                  onPress={() => deleteTask(task.id)}
+                  onPress={() => deleteTask(task)}
                   style={styles.actionButton}
                 >
                   <Ionicons
