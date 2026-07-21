@@ -8,24 +8,36 @@ Per ogni task di implementazione (dalla **Fase 3** alla **Fase 6**) è obbligato
 2. Sviluppo del task.
 3. Eventuali test del task.
 4. Salvataggio delle modifiche:
-   ```bash
-   git add .
-   ```
+
+
+    ```bash
+    git add .
+    ```
+
 5. Commit:
-   ```bash
-   git commit -m "messaggio del commit"
-   ```
+
+
+    ```bash
+    git commit -m "messaggio del commit"
+    ```
+
 6. Push del branch remoto:
-   ```bash
-   git push -u origin <nome-branch>
-   ```
+
+
+    ```bash
+    git push -u origin <nome-branch>
+    ```
+
 7. Apertura della **Pull Request** verso `develop`.
 8. Merge della Pull Request.
 9. Allineamento del branch locale:
-   ```bash
-   git checkout develop
-   git pull origin develop
-   ```
+
+
+    ```bash
+    git checkout develop
+    git pull origin develop
+    ```
+
 10. Eliminazione del feature branch locale e remoto.
 
 > **Nota**
@@ -281,9 +293,8 @@ Implementazione della sincronizzazione realtime tramite Firestore.
 
 ## Task 6.1 – Setup Push Notifications
 
-Configurazione di Expo Push Notifications.
-
-Salvataggio del Push Token nel documento utente su Firestore.
+- Configurazione di Expo Push Notifications.
+- Salvataggio del Push Token nel documento utente su Firestore.
 
 ---
 
@@ -302,30 +313,22 @@ Implementazione della logica che:
 Task 7.1 – Refactoring e Riorganizzazione Architetturale
 
 1. Applicazione Principio DRY e Componentizzazione
-
-
-    - Unificazione delle card di visualizzazione task private e condivise in un singolo componente riutilizzabile.
-    - Accorpamento delle modali di creazione/modifica task in un unico modulo configurabile tramite prop.
-    - Unificazione delle modali di dettaglio della singola giornata del calendario.
+   - Unificazione delle card di visualizzazione task private e condivise in un singolo componente riutilizzabile.
+   - Accorpamento delle modali di creazione/modifica task in un unico modulo configurabile tramite prop.
+   - Unificazione delle modali di dettaglio della singola giornata del calendario.
 
 2. Disaccoppiamento e Separazione degli Stili
-
-
-    - Estrazione di tutti i blocchi StyleSheet.create dai file di logica/interfaccia (.js).
-    - Creazione di file di stile dedicati (es. Componente.stili.js) per isolare completamente il design visuale dal codice applicativo.
-    - Centralizzazione della gestione dei temi, dei colori e degli sfondi per consentire modifiche grafiche globali immediate.
+   - Estrazione di tutti i blocchi StyleSheet.create dai file di logica/interfaccia (.js).
+   - Creazione di file di stile dedicati (es. Componente.stili.js) per isolare completamente il design visuale dal codice applicativo.
+   - Centralizzazione della gestione dei temi, dei colori e degli sfondi per consentire modifiche grafiche globali immediate.
 
 3. Riorganizzazione dei File e Nomenclatura
-
-
-    - Rinominazione di file e cartelle utilizzando esclusivamente nomi in italiano descrittivi della funzione (es. navigazione/, schermate/, componenti/, servizi/).
-    - Ristrutturazione della gerarchia delle cartelle secondo la preferenza e la logica di consultazione definita dal developer.
+   - Rinominazione di file e cartelle utilizzando esclusivamente nomi in italiano descrittivi della funzione (es. navigazione/, schermate/, componenti/, servizi/).
+   - Ristrutturazione della gerarchia delle cartelle secondo la preferenza e la logica di consultazione definita dal developer.
 
 4. Pulizia e Ottimizzazione Codice
-
-
-    - Eliminazione di import non utilizzati, variabili inutilizzate e codice duplicato.
-    - Revisione della Bento UI per garantire omogeneità visiva tra sezione privata e condivisa.
+   - Eliminazione di import non utilizzati, variabili inutilizzate e codice duplicato.
+   - Revisione della Bento UI per garantire omogeneità visiva tra sezione privata e condivisa.
 
 ## Task 7.2 – Testing Funzionale
 
