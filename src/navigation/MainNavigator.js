@@ -1,7 +1,7 @@
 import React from "react";
 import { createMaterialTopTabNavigator } from "@react-navigation/material-top-tabs";
 import PrivateNavigator from "./PrivateNavigator";
-import SharedHomeScreen from "../screens/SharedHomeScreen";
+import NavigatoreCondiviso from "./NavigatoreCondiviso";
 
 const Tab = createMaterialTopTabNavigator();
 
@@ -13,7 +13,7 @@ export default function MainNavigator() {
       }}
     >
       <Tab.Screen name="PrivateArea" component={PrivateNavigator} />
-      <Tab.Screen name="SharedArea" component={SharedHomeScreen} />
+      <Tab.Screen name="SharedArea" component={NavigatoreCondiviso} />
     </Tab.Navigator>
   );
 }
