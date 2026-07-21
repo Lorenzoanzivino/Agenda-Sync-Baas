@@ -22,6 +22,7 @@ import { theme } from "../constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useAuthStore";
 import ModaleTaskCondiviso from "../components/ModaleTaskCondiviso";
+import CampanellaNotifiche from "../components/CampanellaNotifiche";
 
 export default function SchermataOggiCondivisa() {
   const { activeSharedCalendarId } = useAuthStore();
@@ -167,6 +168,15 @@ export default function SchermataOggiCondivisa() {
           </View>
           <Text style={styles.headerSubtitle}>Calendario: {calendarName}</Text>
         </View>
+
+        {/* Campanella delle notifiche in-app */}
+        <CampanellaNotifiche
+          onNavigateToDate={(date) => {
+            // L'integrazione completa del click notifica (navigazione)
+            // avverrà in un task successivo. Per ora la modale si chiude.
+            console.log("Naviga alla data: ", date);
+          }}
+        />
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -288,7 +298,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
     padding: theme.spacing.l,
     paddingBottom: theme.spacing.s,
     paddingTop: theme.spacing.l * 2,

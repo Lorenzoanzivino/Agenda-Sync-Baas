@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  ScrollView,
   ActivityIndicator,
   Linking,
 } from "react-native";
@@ -13,9 +14,11 @@ import {
   query,
   where,
   onSnapshot,
+  addDoc,
   doc,
   deleteDoc,
   writeBatch,
+  getDocs,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { theme } from "../constants/theme";
@@ -24,6 +27,8 @@ import { Ionicons } from "@expo/vector-icons";
 
 import ModaleDettagliCondiviso from "../components/ModaleDettagliCondiviso";
 import ModaleTaskCondiviso from "../components/ModaleTaskCondiviso";
+import FixedTaskModal from "../components/FixedTaskModal";
+import CampanellaNotifiche from "../components/CampanellaNotifiche";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
@@ -69,31 +74,43 @@ LocaleConfig.locales["it"] = {
 LocaleConfig.defaultLocale = "it";
 
 export default function SchermataCalendarioCondiviso() {
-  const { activeSharedCalendarId } = useAuthStore();
+  const { user, activeSharedCalendarId } = useAuthStore();
   const [calendarName, setCalendarName] = useState("");
-  const [allSharedTasks, setAllSharedTasks] = useState([]);
 
+  // Tasks Correnti e Template Fissi Personali
+  const [allSharedTasks, setAllSharedTasks] = useState([]);
+  const [personalFixedTasks, setPersonalFixedTasks] = useState([]);
+
+  // Batch Insert States
+  const [selectedDates, setSelectedDates] = useState({});
+  const [selectedTemplateId, setSelectedTemplateId] = useState(null);
+  const [isInserting, setIsInserting] = useState(false);
+  const [errorBanner, setErrorBanner] = useState("");
+
+  // Modal States
   const [isDayModalVisible, setIsDayModalVisible] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
   const [dayTasks, setDayTasks] = useState([]);
+
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
 
-  // Fetch del nome del calendario attivo
+  const [isFixedModalVisible, setFixedModalVisible] = useState(false);
+  const [templateToEdit, setTemplateToEdit] = useState(null);
+
+  // Fetch nome calendario
   useEffect(() => {
     if (!activeSharedCalendarId) return;
     const unsubscribeCal = onSnapshot(
       doc(db, "shared_calendars", activeSharedCalendarId),
       (docSnap) => {
-        if (docSnap.exists()) {
-          setCalendarName(docSnap.data().name);
-        }
+        if (docSnap.exists()) setCalendarName(docSnap.data().name);
       },
     );
     return () => unsubscribeCal();
   }, [activeSharedCalendarId]);
 
-  // Fetch di tutti i task del calendario
+  // Fetch tutti i task del calendario
   useEffect(() => {
     if (!activeSharedCalendarId) return;
     const q = query(
@@ -110,7 +127,24 @@ export default function SchermataCalendarioCondiviso() {
     return () => unsubscribe();
   }, [activeSharedCalendarId]);
 
-  // Fetch dei task specifici di una giornata
+  // Fetch tutti i task FISSI PERSONALI dell'utente
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "fixed_tasks"),
+      where("userId", "==", user.uid),
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const templates = [];
+      snapshot.forEach((document) =>
+        templates.push({ id: document.id, ...document.data() }),
+      );
+      setPersonalFixedTasks(templates);
+    });
+    return () => unsubscribe();
+  }, [user]);
+
+  // Fetch task della giornata selezionata
   useEffect(() => {
     if (!activeSharedCalendarId || !selectedDayDate) return;
     const q = query(
@@ -134,14 +168,17 @@ export default function SchermataCalendarioCondiviso() {
   }, [activeSharedCalendarId, selectedDayDate]);
 
   const getMarkedDates = () => {
-    const marks = {};
+    const marks = { ...selectedDates };
     const countsByDate = {};
     allSharedTasks.forEach((t) => {
       if (t.date) countsByDate[t.date] = (countsByDate[t.date] || 0) + 1;
     });
 
     Object.keys(countsByDate).forEach((dateStr) => {
+      const count = countsByDate[dateStr];
+      if (!marks[dateStr]) marks[dateStr] = {};
       marks[dateStr] = {
+        ...marks[dateStr],
         customStyles: {
           container: { backgroundColor: "#FFE0B2", borderRadius: 8 },
           text: { color: theme.colors.textMain, fontWeight: "bold" },
@@ -152,15 +189,120 @@ export default function SchermataCalendarioCondiviso() {
   };
 
   const onDayPress = (day) => {
-    setSelectedDayDate(day.dateString);
-    setIsDayModalVisible(true);
+    const dateString = day.dateString;
+    setErrorBanner("");
+
+    if (selectedTemplateId) {
+      const newSelectedDates = { ...selectedDates };
+      if (newSelectedDates[dateString]) {
+        delete newSelectedDates[dateString];
+      } else {
+        newSelectedDates[dateString] = {
+          selected: true,
+          selectedColor: theme.colors.primaryShared,
+        };
+      }
+      setSelectedDates(newSelectedDates);
+    } else {
+      setSelectedDayDate(dateString);
+      setIsDayModalVisible(true);
+    }
+  };
+
+  const toggleTemplateSelection = (taskId) => {
+    if (selectedTemplateId === taskId) {
+      setSelectedTemplateId(null);
+      setSelectedDates({});
+    } else {
+      setSelectedTemplateId(taskId);
+      setSelectedDates({});
+    }
+    setErrorBanner("");
+  };
+
+  const handleBatchInsert = async () => {
+    const datesToInsert = Object.keys(selectedDates).filter(
+      (k) => selectedDates[k].selected,
+    );
+    if (datesToInsert.length === 0 || !selectedTemplateId) return;
+
+    const template = personalFixedTasks.find(
+      (t) => t.id === selectedTemplateId,
+    );
+    if (!template) return;
+
+    setIsInserting(true);
+    setErrorBanner("");
+
+    try {
+      const qCheck = query(
+        collection(db, "shared_tasks"),
+        where("calendarId", "==", activeSharedCalendarId),
+        where("templateId", "==", template.id),
+      );
+      const existingSnap = await getDocs(qCheck);
+      const existingDates = new Set();
+      existingSnap.forEach((docSnap) => existingDates.add(docSnap.data().date));
+
+      const conflictingDates = datesToInsert.filter((d) =>
+        existingDates.has(d),
+      );
+      if (conflictingDates.length > 0) {
+        setErrorBanner(
+          `Errore: Questo evento è già presente nelle date: ${conflictingDates.join(", ")}`,
+        );
+        setIsInserting(false);
+        return;
+      }
+
+      await Promise.all(
+        datesToInsert.map((dateStr) =>
+          addDoc(collection(db, "shared_tasks"), {
+            authorId: user.uid,
+            calendarId: activeSharedCalendarId,
+            templateId: template.id,
+            title: template.title,
+            color: template.color,
+            isAllDay: template.isAllDay,
+            startTime: template.startTime,
+            endTime: template.endTime,
+            description: template.description,
+            url: template.url,
+            date: dateStr,
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+          }),
+        ),
+      );
+      setSelectedDates({});
+      setSelectedTemplateId(null);
+      alert("Eventi inseriti con successo nel calendario del gruppo!");
+    } catch (error) {
+      setErrorBanner("Errore durante l'inserimento nel calendario.");
+    } finally {
+      setIsInserting(false);
+    }
+  };
+
+  const deleteTemplate = async (id) => {
+    if (
+      window.confirm(
+        "Vuoi eliminare questo evento fisso personale? I task già inseriti rimarranno intatti.",
+      )
+    ) {
+      await deleteDoc(doc(db, "fixed_tasks", id));
+      if (selectedTemplateId === id) {
+        setSelectedTemplateId(null);
+        setSelectedDates({});
+      }
+    }
   };
 
   const resetAllCalendarTasks = async () => {
     if (allSharedTasks.length === 0) return;
     if (
       window.confirm(
-        `Vuoi svuotare interamente il calendario "${calendarName}"? Tutti i task verranno eliminati.`,
+        `Vuoi svuotare interamente il calendario "${calendarName}"?`,
       )
     ) {
       try {
@@ -169,6 +311,8 @@ export default function SchermataCalendarioCondiviso() {
           batch.delete(doc(db, "shared_tasks", t.id)),
         );
         await batch.commit();
+        setSelectedDates({});
+        setSelectedTemplateId(null);
       } catch (e) {
         console.error(e);
       }
@@ -212,6 +356,86 @@ export default function SchermataCalendarioCondiviso() {
     );
   }
 
+  const renderFixedTasks = () => {
+    return personalFixedTasks.map((task) => (
+      <View
+        key={task.id}
+        style={[
+          styles.templateCard,
+          selectedTemplateId === task.id && styles.templateCardSelected,
+        ]}
+      >
+        <TouchableOpacity
+          style={styles.templateContent}
+          onPress={() => toggleTemplateSelection(task.id)}
+        >
+          <View
+            style={[styles.colorIndicator, { backgroundColor: task.color }]}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.templateTitle}>{task.title}</Text>
+            <Text style={styles.templateTime}>
+              {task.isAllDay
+                ? "Tutto il giorno"
+                : `${task.startTime} - ${task.endTime}`}
+            </Text>
+            {task.description ? (
+              <Text
+                style={styles.templateDescription}
+                numberOfLines={1}
+                ellipsizeMode="tail"
+              >
+                {task.description}
+              </Text>
+            ) : null}
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.actionsColumn}>
+          {task.url ? (
+            <TouchableOpacity
+              onPress={() => openUrl(task.url)}
+              style={styles.actionButton}
+            >
+              <Ionicons
+                name="link"
+                size={20}
+                color={theme.colors.primaryShared}
+              />
+            </TouchableOpacity>
+          ) : null}
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => {
+              setTemplateToEdit(task);
+              setFixedModalVisible(true);
+            }}
+          >
+            <Ionicons
+              name="pencil-outline"
+              size={20}
+              color={theme.colors.primaryShared}
+            />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={() => deleteTemplate(task.id)}
+          >
+            <Ionicons
+              name="trash-outline"
+              size={20}
+              color={theme.colors.error}
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    ));
+  };
+
+  const numSelectedDates = Object.keys(selectedDates).filter(
+    (k) => selectedDates[k].selected,
+  ).length;
+
   return (
     <View style={styles.container}>
       <View style={styles.calendarHeaderRow}>
@@ -219,19 +443,35 @@ export default function SchermataCalendarioCondiviso() {
           <Text style={styles.title}>Calendario</Text>
           <Text style={styles.headerSubtitle}>{calendarName}</Text>
         </View>
-        {allSharedTasks.length > 0 ? (
-          <TouchableOpacity
-            onPress={resetAllCalendarTasks}
-            style={styles.resetButton}
-          >
-            <Ionicons
-              name="reload-outline"
-              size={22}
-              color={theme.colors.error}
-            />
-          </TouchableOpacity>
-        ) : null}
+
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <CampanellaNotifiche
+            onNavigateToDate={(date) => {
+              setSelectedDayDate(date);
+              setIsDayModalVisible(true);
+            }}
+          />
+
+          {allSharedTasks.length > 0 ? (
+            <TouchableOpacity
+              onPress={resetAllCalendarTasks}
+              style={styles.resetButton}
+            >
+              <Ionicons
+                name="reload-outline"
+                size={22}
+                color={theme.colors.error}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
       </View>
+
+      {errorBanner !== "" ? (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorText}>{errorBanner}</Text>
+        </View>
+      ) : null}
 
       <View style={styles.bentoCard}>
         <Calendar
@@ -240,15 +480,20 @@ export default function SchermataCalendarioCondiviso() {
           markedDates={getMarkedDates()}
           dayComponent={({ date, state }) => {
             const count = getTaskCountForDate(date.dateString);
+            const isSelected = selectedDates[date.dateString]?.selected;
             return (
               <TouchableOpacity
                 onPress={() => onDayPress(date)}
-                style={styles.calendarDayCell}
+                style={[
+                  styles.calendarDayCell,
+                  isSelected && styles.calendarDayCellSelected,
+                ]}
               >
                 <Text
                   style={[
                     styles.calendarDayText,
                     state === "disabled" && styles.disabledText,
+                    isSelected && styles.calendarDayTextSelected,
                   ]}
                 >
                   {date.day}
@@ -271,6 +516,57 @@ export default function SchermataCalendarioCondiviso() {
           }}
         />
       </View>
+
+      <View style={styles.sectionHeader}>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <Text style={styles.sectionTitle}>
+            I Tuoi Eventi Fissi (Personali)
+          </Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => {
+            setTemplateToEdit(null);
+            setFixedModalVisible(true);
+          }}
+        >
+          <Ionicons
+            name="add-circle"
+            size={28}
+            color={theme.colors.primaryShared}
+          />
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.templatesContainer}>
+        {personalFixedTasks.length === 0 ? (
+          <Text style={styles.emptyText}>
+            Crea un evento fisso personale per inserirlo velocemente in più
+            date.
+          </Text>
+        ) : (
+          renderFixedTasks()
+        )}
+      </ScrollView>
+
+      {numSelectedDates > 0 && selectedTemplateId ? (
+        <View style={styles.batchActionCard}>
+          <Text style={styles.batchText}>
+            Inserisci in{" "}
+            <Text style={{ fontWeight: "bold" }}>{numSelectedDates}</Text> date
+          </Text>
+          <TouchableOpacity
+            style={styles.batchButton}
+            onPress={handleBatchInsert}
+            disabled={isInserting}
+          >
+            {isInserting ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Ionicons name="checkmark" size={24} color="#FFF" />
+            )}
+          </TouchableOpacity>
+        </View>
+      ) : null}
 
       <ModaleDettagliCondiviso
         visible={isDayModalVisible}
@@ -298,6 +594,12 @@ export default function SchermataCalendarioCondiviso() {
         onClose={() => setIsTaskModalVisible(false)}
         selectedDate={selectedDayDate}
         taskToEdit={taskToEdit}
+      />
+
+      <FixedTaskModal
+        visible={isFixedModalVisible}
+        onClose={() => setFixedModalVisible(false)}
+        templateToEdit={templateToEdit}
       />
     </View>
   );
@@ -328,6 +630,18 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   resetButton: { padding: 6, backgroundColor: "#FFE5E5", borderRadius: 12 },
+  errorBanner: {
+    backgroundColor: "#FFE5E5",
+    padding: theme.spacing.m,
+    borderRadius: theme.borderRadius.input,
+    marginBottom: theme.spacing.m,
+  },
+  errorText: {
+    color: theme.colors.error,
+    fontWeight: "bold",
+    textAlign: "center",
+    fontSize: 14,
+  },
   bentoCard: {
     backgroundColor: theme.colors.cardBackground,
     borderRadius: theme.borderRadius.card,
@@ -345,11 +659,13 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.sharedBackground,
     position: "relative",
   },
+  calendarDayCellSelected: { backgroundColor: theme.colors.primaryShared },
   calendarDayText: {
     fontSize: 14,
     color: theme.colors.textMain,
     fontWeight: "500",
   },
+  calendarDayTextSelected: { color: "#FFF", fontWeight: "bold" },
   disabledText: { color: theme.colors.textSecondary, opacity: 0.4 },
   badgeContainer: {
     position: "absolute",
@@ -364,5 +680,78 @@ const styles = StyleSheet.create({
     paddingHorizontal: 2,
   },
   badgeText: { color: "#FFF", fontSize: 9, fontWeight: "bold" },
-  emptyText: { color: theme.colors.textSecondary, textAlign: "center" },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: theme.spacing.s,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: theme.colors.textMain,
+  },
+  templatesContainer: { flex: 1 },
+  emptyText: { color: theme.colors.textSecondary, fontStyle: "italic" },
+  templateCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.colors.cardBackground,
+    padding: theme.spacing.m,
+    borderRadius: theme.borderRadius.card,
+    marginBottom: theme.spacing.s,
+    borderWidth: 2,
+    borderColor: "transparent",
+  },
+  templateCardSelected: { borderColor: theme.colors.primaryShared },
+  templateContent: { flex: 1, flexDirection: "row", alignItems: "center" },
+  colorIndicator: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    marginRight: theme.spacing.s,
+  },
+  templateTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: theme.colors.textMain,
+  },
+  templateTime: {
+    fontSize: 12,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+  },
+  templateDescription: {
+    fontSize: 13,
+    color: theme.colors.textSecondary,
+    marginTop: 2,
+    fontStyle: "italic",
+  },
+  actionsColumn: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: theme.spacing.s,
+  },
+  actionButton: { padding: 6, marginLeft: 4 },
+  batchActionCard: {
+    position: "absolute",
+    bottom: theme.spacing.l,
+    left: theme.spacing.l,
+    right: theme.spacing.l,
+    backgroundColor: theme.colors.cardBackground,
+    padding: theme.spacing.m,
+    borderRadius: theme.borderRadius.card,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    elevation: 4,
+  },
+  batchText: { fontSize: 16, color: theme.colors.textMain },
+  batchButton: {
+    backgroundColor: theme.colors.primaryShared,
+    padding: theme.spacing.s,
+    borderRadius: 12,
+    width: 48,
+    alignItems: "center",
+  },
 });
