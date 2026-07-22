@@ -20,14 +20,15 @@ import {
   getDocs,
   writeBatch,
 } from "firebase/firestore";
-import { auth, db } from "../config/firebase";
-import { theme } from "../constants/theme";
-import { useAuthStore } from "../store/useAuthStore";
+import { auth, db } from "../../config/firebase";
+import { PaletteColori } from "../../palette_e_testi/PaletteColori";
+import { Testi } from "../../palette_e_testi/Testi";
+import { useAuthStore } from "../../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
-import FixedTaskModal from "../components/FixedTaskModal";
-import DayDetailsModal from "../components/DayDetailsModal";
-import TaskModal from "../components/TaskModal";
+import FixedTaskModal from "../../components/FixedTaskModal";
+import DayDetailsModal from "../../components/DayDetailsModal";
+import TaskModal from "../../components/TaskModal";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
@@ -68,7 +69,7 @@ LocaleConfig.locales["it"] = {
     "Sabato",
   ],
   dayNamesShort: ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
-  today: "Oggi",
+  today: Testi.privato.oggiTitle,
 };
 LocaleConfig.defaultLocale = "it";
 
@@ -164,7 +165,7 @@ export default function PrivateCalendarScreen() {
       } else {
         newSelectedDates[dateString] = {
           selected: true,
-          selectedColor: theme.colors.primaryPrivate,
+          selectedColor: PaletteColori.privato.primary,
         };
       }
       setSelectedDates(newSelectedDates);
@@ -214,7 +215,7 @@ export default function PrivateCalendarScreen() {
       );
       if (conflictingDates.length > 0) {
         setErrorBanner(
-          `Errore: Questo evento è già presente in una o più date selezionate (${conflictingDates.join(", ")})!`,
+          `${Testi.modali.erroreConflittoDate} ${conflictingDates.join(", ")}!`,
         );
         setIsInserting(false);
         return;
@@ -240,7 +241,6 @@ export default function PrivateCalendarScreen() {
       );
       setSelectedDates({});
       setSelectedTemplateId(null);
-      alert("Eventi inseriti con successo!");
     } catch (error) {
       setErrorBanner("Errore durante l'inserimento nel calendario.");
     } finally {
@@ -249,11 +249,7 @@ export default function PrivateCalendarScreen() {
   };
 
   const deleteTemplate = async (id) => {
-    if (
-      window.confirm(
-        "Vuoi davvero eliminare questo evento fisso? I task già inseriti nel calendario rimarranno intatti.",
-      )
-    ) {
+    if (window.confirm("Vuoi davvero eliminare questo evento fisso?")) {
       await deleteDoc(doc(db, "fixed_tasks", id));
       if (selectedTemplateId === id) {
         setSelectedTemplateId(null);
@@ -264,11 +260,7 @@ export default function PrivateCalendarScreen() {
 
   const resetAllCalendarTasks = async () => {
     if (allPrivateTasks.length === 0) return;
-    if (
-      window.confirm(
-        "Sei sicuro di voler svuotare tutte le caselle del calendario dai task?",
-      )
-    ) {
+    if (window.confirm(Testi.privato.alertSvuotaCalendario)) {
       try {
         const batch = writeBatch(db);
         allPrivateTasks.forEach((t) => {
@@ -285,11 +277,7 @@ export default function PrivateCalendarScreen() {
 
   const resetFixedTasksList = async () => {
     if (fixedTasks.length === 0) return;
-    if (
-      window.confirm(
-        "Sei sicuro di voler svuotare l'intera lista dei task fissi?",
-      )
-    ) {
+    if (window.confirm(Testi.privato.alertSvuotaFissi)) {
       try {
         const batch = writeBatch(db);
         fixedTasks.forEach((ft) => {
@@ -307,9 +295,7 @@ export default function PrivateCalendarScreen() {
   const resetSpecificDayTasks = async () => {
     if (!selectedDayDate || dayTasks.length === 0) return;
     if (
-      window.confirm(
-        `Sei sicuro di voler svuotare tutti i task del giorno ${selectedDayDate}?`,
-      )
+      window.confirm(`${Testi.privato.alertSvuotaOggi} ${selectedDayDate}?`)
     ) {
       try {
         const batch = writeBatch(db);
@@ -332,9 +318,9 @@ export default function PrivateCalendarScreen() {
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) await Linking.openURL(url);
-      else alert("Impossibile aprire il link.");
+      else alert(Testi.alert.erroreLink);
     } catch (error) {
-      alert("Errore nell'apertura del link.");
+      alert(Testi.alert.erroreLink);
     }
   };
 
@@ -362,7 +348,7 @@ export default function PrivateCalendarScreen() {
             <Text style={styles.templateTitle}>{task.title}</Text>
             <Text style={styles.templateTime}>
               {task.isAllDay
-                ? "Tutto il giorno"
+                ? Testi.modali.tuttoIlGiorno
                 : `${task.startTime} - ${task.endTime}`}
             </Text>
             {task.description ? (
@@ -386,7 +372,7 @@ export default function PrivateCalendarScreen() {
               <Ionicons
                 name="link"
                 size={20}
-                color={theme.colors.primaryPrivate}
+                color={PaletteColori.privato.primary}
               />
             </TouchableOpacity>
           ) : null}
@@ -401,7 +387,7 @@ export default function PrivateCalendarScreen() {
             <Ionicons
               name="pencil-outline"
               size={20}
-              color={theme.colors.primaryPrivate}
+              color={PaletteColori.privato.primary}
             />
           </TouchableOpacity>
 
@@ -412,7 +398,7 @@ export default function PrivateCalendarScreen() {
             <Ionicons
               name="trash-outline"
               size={20}
-              color={theme.colors.error}
+              color={PaletteColori.privato.error}
             />
           </TouchableOpacity>
         </View>
@@ -428,7 +414,7 @@ export default function PrivateCalendarScreen() {
     <View style={styles.container}>
       <View style={styles.calendarHeaderRow}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Text style={styles.title}>Calendario</Text>
+          <Text style={styles.title}>{Testi.privato.calendarioTitle}</Text>
           {allPrivateTasks.length > 0 ? (
             <TouchableOpacity
               onPress={resetAllCalendarTasks}
@@ -437,7 +423,7 @@ export default function PrivateCalendarScreen() {
               <Ionicons
                 name="reload-outline"
                 size={22}
-                color={theme.colors.error}
+                color={PaletteColori.privato.error}
               />
             </TouchableOpacity>
           ) : null}
@@ -446,7 +432,7 @@ export default function PrivateCalendarScreen() {
           <Ionicons
             name="log-out-outline"
             size={28}
-            color={theme.colors.error}
+            color={PaletteColori.privato.error}
           />
         </TouchableOpacity>
       </View>
@@ -506,19 +492,21 @@ export default function PrivateCalendarScreen() {
             );
           }}
           theme={{
-            calendarBackground: theme.colors.cardBackground,
-            textSectionTitleColor: theme.colors.textSecondary,
-            todayTextColor: theme.colors.primaryPrivate,
-            dayTextColor: theme.colors.textMain,
-            arrowColor: theme.colors.primaryPrivate,
-            monthTextColor: theme.colors.textMain,
+            calendarBackground: PaletteColori.privato.cardBackground,
+            textSectionTitleColor: PaletteColori.privato.textSecondary,
+            todayTextColor: PaletteColori.privato.primary,
+            dayTextColor: PaletteColori.privato.textMain,
+            arrowColor: PaletteColori.privato.primary,
+            monthTextColor: PaletteColori.privato.textMain,
           }}
         />
       </View>
 
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
-          <Text style={styles.sectionTitle}>I Tuoi Eventi Fissi</Text>
+          <Text style={styles.sectionTitle}>
+            {Testi.privato.sezioneEventiFissi}
+          </Text>
           {fixedTasks.length > 0 ? (
             <TouchableOpacity
               onPress={resetFixedTasksList}
@@ -527,7 +515,7 @@ export default function PrivateCalendarScreen() {
               <Ionicons
                 name="reload-outline"
                 size={18}
-                color={theme.colors.error}
+                color={PaletteColori.privato.error}
               />
             </TouchableOpacity>
           ) : null}
@@ -541,7 +529,7 @@ export default function PrivateCalendarScreen() {
           <Ionicons
             name="add-circle"
             size={28}
-            color={theme.colors.primaryPrivate}
+            color={PaletteColori.privato.primary}
           />
         </TouchableOpacity>
       </View>
@@ -549,7 +537,7 @@ export default function PrivateCalendarScreen() {
       <ScrollView style={styles.templatesContainer}>
         {fixedTasks.length === 0 ? (
           <Text style={styles.emptyText}>
-            Crea un evento fisso per inserirlo velocemente nel calendario.
+            {Testi.privato.nessunEventoFisso}
           </Text>
         ) : (
           renderFixedTasks()
@@ -559,8 +547,9 @@ export default function PrivateCalendarScreen() {
       {numSelectedDates > 0 && selectedTemplateId ? (
         <View style={styles.batchActionCard}>
           <Text style={styles.batchText}>
-            Inserisci in{" "}
-            <Text style={{ fontWeight: "bold" }}>{numSelectedDates}</Text> date
+            {Testi.privato.inserisciInDate}{" "}
+            <Text style={{ fontWeight: "bold" }}>{numSelectedDates}</Text>{" "}
+            {Testi.privato.inserisciDateSuf}
           </Text>
           <TouchableOpacity
             style={styles.batchButton}
@@ -594,7 +583,7 @@ export default function PrivateCalendarScreen() {
           setIsTaskModalVisible(true);
         }}
         onDeleteTask={async (taskId) => {
-          if (window.confirm("Vuoi davvero eliminare questo task?")) {
+          if (window.confirm(Testi.modali.alertEliminaTask)) {
             await deleteDoc(doc(db, "private_tasks", taskId));
           }
         }}
@@ -614,20 +603,20 @@ export default function PrivateCalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.l,
-    paddingTop: theme.spacing.l * 2,
+    backgroundColor: PaletteColori.privato.background,
+    padding: PaletteColori.spacing.l,
+    paddingTop: PaletteColori.spacing.l * 2,
   },
   calendarHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.privato.primary,
   },
   resetButton: {
     padding: 6,
@@ -636,22 +625,22 @@ const styles = StyleSheet.create({
   },
   errorBanner: {
     backgroundColor: "#FFE5E5",
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
-    marginBottom: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorText: {
-    color: theme.colors.error,
+    color: PaletteColori.privato.error,
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 14,
   },
   bentoCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.m,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    borderRadius: PaletteColori.borderRadius.card,
+    padding: PaletteColori.spacing.m,
     overflow: "hidden",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   calendarDayCell: {
     width: 36,
@@ -660,27 +649,27 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     margin: 2,
-    backgroundColor: theme.colors.privateBackground,
+    backgroundColor: PaletteColori.privato.background,
     position: "relative",
   },
   calendarDayCellToday: {
     borderWidth: 2,
-    borderColor: theme.colors.primaryPrivate,
+    borderColor: PaletteColori.privato.primary,
   },
   calendarDayCellBirthday: {
     borderWidth: 2,
-    borderColor: "#FF69B4",
+    borderColor: PaletteColori.privato.birthdayBadge,
   },
   calendarDayTextToday: {
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.privato.primary,
     fontWeight: "bold",
   },
   calendarDayCellSelected: {
-    backgroundColor: theme.colors.primaryPrivate,
+    backgroundColor: PaletteColori.privato.primary,
   },
   calendarDayText: {
     fontSize: 14,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     fontWeight: "500",
   },
   calendarDayTextSelected: {
@@ -688,7 +677,7 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   disabledText: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     opacity: 0.4,
   },
   birthdayBadge: {
@@ -704,7 +693,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: theme.colors.primaryPrivate,
+    backgroundColor: PaletteColori.privato.primary,
     borderRadius: 6,
     minWidth: 14,
     height: 14,
@@ -721,32 +710,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.s,
+    marginBottom: PaletteColori.spacing.s,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
   },
   templatesContainer: {
     flex: 1,
   },
   emptyText: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     fontStyle: "italic",
   },
   templateCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
     borderWidth: 2,
     borderColor: "transparent",
   },
   templateCardSelected: {
-    borderColor: theme.colors.primaryPrivate,
+    borderColor: PaletteColori.privato.primary,
   },
   templateContent: {
     flex: 1,
@@ -757,28 +746,28 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    marginRight: theme.spacing.s,
+    marginRight: PaletteColori.spacing.s,
   },
   templateTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
   },
   templateTime: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     marginTop: 2,
   },
   templateDescription: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     marginTop: 2,
     fontStyle: "italic",
   },
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: theme.spacing.s,
+    marginLeft: PaletteColori.spacing.s,
   },
   actionButton: {
     padding: 6,
@@ -786,28 +775,24 @@ const styles = StyleSheet.create({
   },
   batchActionCard: {
     position: "absolute",
-    bottom: theme.spacing.l,
-    left: theme.spacing.l,
-    right: theme.spacing.l,
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
+    bottom: PaletteColori.spacing.l,
+    left: PaletteColori.spacing.l,
+    right: PaletteColori.spacing.l,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
   batchText: {
     fontSize: 16,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
   },
   batchButton: {
-    backgroundColor: theme.colors.primaryPrivate,
-    padding: theme.spacing.s,
+    backgroundColor: PaletteColori.privato.primary,
+    padding: PaletteColori.spacing.s,
     borderRadius: 12,
     width: 48,
     alignItems: "center",

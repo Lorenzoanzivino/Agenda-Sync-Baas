@@ -2,11 +2,13 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 
-import SchermataOggiCondivisa from "../screens/SchermataOggiCondivisa";
-import SchermataCalendarioCondiviso from "../screens/SchermataCalendarioCondiviso";
-import SchermataGestioneCondivisa from "../screens/SchermataGestioneCondivisa";
+// I file ora si trovano nella sottocartella "condiviso/"
+import SchermataOggiCondivisa from "../screens/condiviso/SchermataOggiCondivisa";
+import SchermataCalendarioCondiviso from "../screens/condiviso/SchermataCalendarioCondiviso";
+import SchermataGestioneCondivisa from "../screens/condiviso/SchermataGestioneCondivisa";
 
 const Tab = createBottomTabNavigator();
 
@@ -27,10 +29,10 @@ export default function NavigatoreCondiviso() {
             iconName = focused ? "settings" : "settings-outline";
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: theme.colors.primaryShared,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarActiveTintColor: PaletteColori.condiviso.primary,
+        tabBarInactiveTintColor: PaletteColori.condiviso.textSecondary,
         tabBarStyle: {
-          backgroundColor: theme.colors.cardBackground,
+          backgroundColor: PaletteColori.condiviso.cardBackground,
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
@@ -41,9 +43,21 @@ export default function NavigatoreCondiviso() {
         tabBarLabelStyle: { fontSize: 12, fontWeight: "500" },
       })}
     >
-      <Tab.Screen name="Oggi" component={SchermataOggiCondivisa} />
-      <Tab.Screen name="Calendario" component={SchermataCalendarioCondiviso} />
-      <Tab.Screen name="Gestione" component={SchermataGestioneCondivisa} />
+      <Tab.Screen
+        name="Oggi"
+        component={SchermataOggiCondivisa}
+        options={{ title: Testi.condiviso.oggiTitle }}
+      />
+      <Tab.Screen
+        name="Calendario"
+        component={SchermataCalendarioCondiviso}
+        options={{ title: Testi.condiviso.calendarioTitle }}
+      />
+      <Tab.Screen
+        name="Gestione"
+        component={SchermataGestioneCondivisa}
+        options={{ title: Testi.condiviso.gestioneTitle }}
+      />
     </Tab.Navigator>
   );
 }

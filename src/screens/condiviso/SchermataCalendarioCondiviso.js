@@ -21,16 +21,17 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-import { auth, db } from "../config/firebase";
-import { theme } from "../constants/theme";
-import { useAuthStore } from "../store/useAuthStore";
+import { auth, db } from "../../config/firebase";
+import { PaletteColori } from "../../palette_e_testi/PaletteColori";
+import { Testi } from "../../palette_e_testi/Testi";
+import { useAuthStore } from "../../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
-import ModaleDettagliCondiviso from "../components/ModaleDettagliCondiviso";
-import ModaleTaskCondiviso from "../components/ModaleTaskCondiviso";
-import FixedTaskModal from "../components/FixedTaskModal";
-import CampanellaNotifiche from "../components/CampanellaNotifiche";
-import { inviaNotificaIscritti } from "../utils/notificheUtils";
+import ModaleDettagliCondiviso from "../../components/ModaleDettagliCondiviso";
+import ModaleTaskCondiviso from "../../components/ModaleTaskCondiviso";
+import FixedTaskModal from "../../components/FixedTaskModal";
+import CampanellaNotifiche from "../../components/CampanellaNotifiche";
+import { inviaNotificaIscritti } from "../../utils/notificheUtils";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
@@ -71,7 +72,7 @@ LocaleConfig.locales["it"] = {
     "Sabato",
   ],
   dayNamesShort: ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
-  today: "Oggi",
+  today: Testi.condiviso.oggiTitle,
 };
 LocaleConfig.defaultLocale = "it";
 
@@ -204,7 +205,7 @@ export default function SchermataCalendarioCondiviso() {
         ...marks[dateStr],
         customStyles: {
           container: { backgroundColor: "#FFE0B2", borderRadius: 8 },
-          text: { color: theme.colors.textMain, fontWeight: "bold" },
+          text: { color: PaletteColori.condiviso.textMain, fontWeight: "bold" },
         },
       };
     });
@@ -222,7 +223,7 @@ export default function SchermataCalendarioCondiviso() {
       } else {
         newSelectedDates[dateString] = {
           selected: true,
-          selectedColor: theme.colors.primaryShared,
+          selectedColor: PaletteColori.condiviso.primary,
         };
       }
       setSelectedDates(newSelectedDates);
@@ -272,7 +273,7 @@ export default function SchermataCalendarioCondiviso() {
       );
       if (conflictingDates.length > 0) {
         setErrorBanner(
-          `Errore: Questo evento è già presente nelle date: ${conflictingDates.join(", ")}`,
+          `${Testi.modali.erroreConflittoDate} ${conflictingDates.join(", ")}`,
         );
         setIsInserting(false);
         return;
@@ -308,7 +309,6 @@ export default function SchermataCalendarioCondiviso() {
 
       setSelectedDates({});
       setSelectedTemplateId(null);
-      alert("Eventi inseriti con successo nel calendario del gruppo!");
     } catch (error) {
       setErrorBanner("Errore durante l'inserimento nel calendario.");
     } finally {
@@ -317,11 +317,7 @@ export default function SchermataCalendarioCondiviso() {
   };
 
   const deleteTemplate = async (id) => {
-    if (
-      window.confirm(
-        "Vuoi eliminare questo evento fisso personale? I task già inseriti rimarranno intatti.",
-      )
-    ) {
+    if (window.confirm("Vuoi eliminare questo evento fisso personale?")) {
       await deleteDoc(doc(db, "fixed_tasks", id));
       if (selectedTemplateId === id) {
         setSelectedTemplateId(null);
@@ -334,7 +330,7 @@ export default function SchermataCalendarioCondiviso() {
     if (allSharedTasks.length === 0) return;
     if (
       window.confirm(
-        `Vuoi svuotare interamente il calendario "${calendarName}"?`,
+        `${Testi.condiviso.alertSvuotaCalendario} "${calendarName}"?`,
       )
     ) {
       try {
@@ -362,7 +358,9 @@ export default function SchermataCalendarioCondiviso() {
 
   const resetSpecificDayTasks = async () => {
     if (!selectedDayDate || dayTasks.length === 0) return;
-    if (window.confirm(`Svuotare i task condivisi del ${selectedDayDate}?`)) {
+    if (
+      window.confirm(`${Testi.privato.alertSvuotaOggi} ${selectedDayDate}?`)
+    ) {
       try {
         const batch = writeBatch(db);
         dayTasks.forEach((dt) => batch.delete(doc(db, "shared_tasks", dt.id)));
@@ -385,9 +383,9 @@ export default function SchermataCalendarioCondiviso() {
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) await Linking.openURL(url);
-      else alert("Impossibile aprire il link.");
+      else alert(Testi.alert.erroreLink);
     } catch (error) {
-      alert("Errore");
+      alert(Testi.alert.erroreLink);
     }
   };
 
@@ -398,18 +396,16 @@ export default function SchermataCalendarioCondiviso() {
     return (
       <View style={styles.container}>
         <View style={styles.calendarHeaderRow}>
-          <Text style={styles.title}>Calendario</Text>
+          <Text style={styles.title}>{Testi.condiviso.calendarioTitle}</Text>
           <TouchableOpacity onPress={() => auth.signOut()}>
             <Ionicons
               name="log-out-outline"
               size={28}
-              color={theme.colors.error}
+              color={PaletteColori.condiviso.error}
             />
           </TouchableOpacity>
         </View>
-        <Text style={styles.emptyText}>
-          Nessun calendario collegato. Vai nella sezione Gestione.
-        </Text>
+        <Text style={styles.emptyText}>{Testi.condiviso.nessunCalendario}</Text>
       </View>
     );
   }
@@ -434,7 +430,7 @@ export default function SchermataCalendarioCondiviso() {
             <Text style={styles.templateTitle}>{task.title}</Text>
             <Text style={styles.templateTime}>
               {task.isAllDay
-                ? "Tutto il giorno"
+                ? Testi.modali.tuttoIlGiorno
                 : `${task.startTime} - ${task.endTime}`}
             </Text>
             {task.description ? (
@@ -458,7 +454,7 @@ export default function SchermataCalendarioCondiviso() {
               <Ionicons
                 name="link"
                 size={20}
-                color={theme.colors.primaryShared}
+                color={PaletteColori.condiviso.primary}
               />
             </TouchableOpacity>
           ) : null}
@@ -472,7 +468,7 @@ export default function SchermataCalendarioCondiviso() {
             <Ionicons
               name="pencil-outline"
               size={20}
-              color={theme.colors.primaryShared}
+              color={PaletteColori.condiviso.primary}
             />
           </TouchableOpacity>
           <TouchableOpacity
@@ -482,7 +478,7 @@ export default function SchermataCalendarioCondiviso() {
             <Ionicons
               name="trash-outline"
               size={20}
-              color={theme.colors.error}
+              color={PaletteColori.condiviso.error}
             />
           </TouchableOpacity>
         </View>
@@ -498,7 +494,7 @@ export default function SchermataCalendarioCondiviso() {
     <View style={styles.container}>
       <View style={styles.calendarHeaderRow}>
         <View style={{ flexDirection: "column" }}>
-          <Text style={styles.title}>Calendario</Text>
+          <Text style={styles.title}>{Testi.condiviso.calendarioTitle}</Text>
           <Text style={styles.headerSubtitle}>{calendarName}</Text>
         </View>
 
@@ -518,7 +514,7 @@ export default function SchermataCalendarioCondiviso() {
               <Ionicons
                 name="reload-outline"
                 size={22}
-                color={theme.colors.error}
+                color={PaletteColori.condiviso.error}
               />
             </TouchableOpacity>
           ) : null}
@@ -527,7 +523,7 @@ export default function SchermataCalendarioCondiviso() {
             <Ionicons
               name="log-out-outline"
               size={28}
-              color={theme.colors.error}
+              color={PaletteColori.condiviso.error}
             />
           </TouchableOpacity>
         </View>
@@ -576,12 +572,12 @@ export default function SchermataCalendarioCondiviso() {
             );
           }}
           theme={{
-            calendarBackground: theme.colors.cardBackground,
-            textSectionTitleColor: theme.colors.textSecondary,
-            todayTextColor: theme.colors.primaryShared,
-            dayTextColor: theme.colors.textMain,
-            arrowColor: theme.colors.primaryShared,
-            monthTextColor: theme.colors.textMain,
+            calendarBackground: PaletteColori.condiviso.cardBackground,
+            textSectionTitleColor: PaletteColori.condiviso.textSecondary,
+            todayTextColor: PaletteColori.condiviso.primary,
+            dayTextColor: PaletteColori.condiviso.textMain,
+            arrowColor: PaletteColori.condiviso.primary,
+            monthTextColor: PaletteColori.condiviso.textMain,
           }}
         />
       </View>
@@ -589,7 +585,7 @@ export default function SchermataCalendarioCondiviso() {
       <View style={styles.sectionHeader}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
           <Text style={styles.sectionTitle}>
-            I Tuoi Eventi Fissi (Personali)
+            {Testi.condiviso.sezioneEventiFissi}
           </Text>
         </View>
         <TouchableOpacity
@@ -601,7 +597,7 @@ export default function SchermataCalendarioCondiviso() {
           <Ionicons
             name="add-circle"
             size={28}
-            color={theme.colors.primaryShared}
+            color={PaletteColori.condiviso.primary}
           />
         </TouchableOpacity>
       </View>
@@ -609,8 +605,7 @@ export default function SchermataCalendarioCondiviso() {
       <ScrollView style={styles.templatesContainer}>
         {personalFixedTasks.length === 0 ? (
           <Text style={styles.emptyText}>
-            Crea un evento fisso personale per inserirlo velocemente in più
-            date.
+            {Testi.condiviso.nessunEventoFisso}
           </Text>
         ) : (
           renderFixedTasks()
@@ -620,8 +615,9 @@ export default function SchermataCalendarioCondiviso() {
       {numSelectedDates > 0 && selectedTemplateId ? (
         <View style={styles.batchActionCard}>
           <Text style={styles.batchText}>
-            Inserisci in{" "}
-            <Text style={{ fontWeight: "bold" }}>{numSelectedDates}</Text> date
+            {Testi.privato.inserisciInDate}{" "}
+            <Text style={{ fontWeight: "bold" }}>{numSelectedDates}</Text>{" "}
+            {Testi.privato.inserisciDateSuf}
           </Text>
           <TouchableOpacity
             style={styles.batchButton}
@@ -652,7 +648,7 @@ export default function SchermataCalendarioCondiviso() {
           setIsTaskModalVisible(true);
         }}
         onDeleteTask={async (taskId) => {
-          if (window.confirm("Vuoi eliminare questo task condiviso?")) {
+          if (window.confirm(Testi.modali.alertEliminaTask)) {
             await deleteDoc(doc(db, "shared_tasks", taskId));
             await inviaNotificaIscritti({
               calendarId: activeSharedCalendarId,
@@ -685,46 +681,46 @@ export default function SchermataCalendarioCondiviso() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.l,
-    paddingTop: theme.spacing.l * 2,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.l,
+    paddingTop: PaletteColori.spacing.l * 2,
   },
   calendarHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     fontWeight: "bold",
     marginTop: 2,
   },
   resetButton: { padding: 6, backgroundColor: "#FFE5E5", borderRadius: 12 },
   errorBanner: {
     backgroundColor: "#FFE5E5",
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
-    marginBottom: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorText: {
-    color: theme.colors.error,
+    color: PaletteColori.condiviso.error,
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 14,
   },
   bentoCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.m,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    borderRadius: PaletteColori.borderRadius.card,
+    padding: PaletteColori.spacing.m,
     overflow: "hidden",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   calendarDayCell: {
     width: 36,
@@ -733,30 +729,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     margin: 2,
-    backgroundColor: theme.colors.sharedBackground,
+    backgroundColor: PaletteColori.condiviso.background,
     position: "relative",
   },
   calendarDayCellToday: {
     borderWidth: 2,
-    borderColor: theme.colors.primaryShared,
+    borderColor: PaletteColori.condiviso.primary,
   },
   calendarDayTextToday: {
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
     fontWeight: "bold",
   },
-  calendarDayCellSelected: { backgroundColor: theme.colors.primaryShared },
+  calendarDayCellSelected: { backgroundColor: PaletteColori.condiviso.primary },
   calendarDayText: {
     fontSize: 14,
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
     fontWeight: "500",
   },
   calendarDayTextSelected: { color: "#FFF", fontWeight: "bold" },
-  disabledText: { color: theme.colors.textSecondary, opacity: 0.4 },
+  disabledText: { color: PaletteColori.condiviso.textSecondary, opacity: 0.4 },
   badgeContainer: {
     position: "absolute",
     bottom: 0,
     right: 0,
-    backgroundColor: theme.colors.primaryShared,
+    backgroundColor: PaletteColori.condiviso.primary,
     borderRadius: 6,
     minWidth: 14,
     height: 14,
@@ -769,72 +765,75 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.s,
+    marginBottom: PaletteColori.spacing.s,
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
   },
   templatesContainer: { flex: 1 },
-  emptyText: { color: theme.colors.textSecondary, fontStyle: "italic" },
+  emptyText: {
+    color: PaletteColori.condiviso.textSecondary,
+    fontStyle: "italic",
+  },
   templateCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
     borderWidth: 2,
     borderColor: "transparent",
   },
-  templateCardSelected: { borderColor: theme.colors.primaryShared },
+  templateCardSelected: { borderColor: PaletteColori.condiviso.primary },
   templateContent: { flex: 1, flexDirection: "row", alignItems: "center" },
   colorIndicator: {
     width: 16,
     height: 16,
     borderRadius: 8,
-    marginRight: theme.spacing.s,
+    marginRight: PaletteColori.spacing.s,
   },
   templateTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
   },
   templateTime: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginTop: 2,
   },
   templateDescription: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginTop: 2,
     fontStyle: "italic",
   },
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: theme.spacing.s,
+    marginLeft: PaletteColori.spacing.s,
   },
   actionButton: { padding: 6, marginLeft: 4 },
   batchActionCard: {
     position: "absolute",
-    bottom: theme.spacing.l,
-    left: theme.spacing.l,
-    right: theme.spacing.l,
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
+    bottom: PaletteColori.spacing.l,
+    left: PaletteColori.spacing.l,
+    right: PaletteColori.spacing.l,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     elevation: 4,
   },
-  batchText: { fontSize: 16, color: theme.colors.textMain },
+  batchText: { fontSize: 16, color: PaletteColori.condiviso.textMain },
   batchButton: {
-    backgroundColor: theme.colors.primaryShared,
-    padding: theme.spacing.s,
+    backgroundColor: PaletteColori.condiviso.primary,
+    padding: PaletteColori.spacing.s,
     borderRadius: 12,
     width: 48,
     alignItems: "center",

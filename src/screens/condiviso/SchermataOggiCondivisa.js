@@ -19,13 +19,14 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-import { auth, db } from "../config/firebase";
-import { theme } from "../constants/theme";
+import { auth, db } from "../../config/firebase";
+import { PaletteColori } from "../../palette_e_testi/PaletteColori";
+import { Testi } from "../../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuthStore } from "../store/useAuthStore";
-import ModaleTaskCondiviso from "../components/ModaleTaskCondiviso";
-import CampanellaNotifiche from "../components/CampanellaNotifiche";
-import { inviaNotificaIscritti } from "../utils/notificheUtils";
+import { useAuthStore } from "../../store/useAuthStore";
+import ModaleTaskCondiviso from "../../components/ModaleTaskCondiviso";
+import CampanellaNotifiche from "../../components/CampanellaNotifiche";
+import { inviaNotificaIscritti } from "../../utils/notificheUtils";
 
 export default function SchermataOggiCondivisa() {
   const { user, activeSharedCalendarId, setActiveSharedCalendarId } =
@@ -107,7 +108,7 @@ export default function SchermataOggiCondivisa() {
   };
 
   const deleteTask = async (task) => {
-    if (window.confirm("Vuoi davvero eliminare questo task condiviso?")) {
+    if (window.confirm(Testi.modali.alertEliminaTask)) {
       await deleteDoc(doc(db, "shared_tasks", task.id));
       await inviaNotificaIscritti({
         calendarId: activeSharedCalendarId,
@@ -122,9 +123,7 @@ export default function SchermataOggiCondivisa() {
   const resetTodayTasks = async () => {
     if (tasks.length === 0) return;
     if (
-      window.confirm(
-        `Sei sicuro di voler svuotare tutti i task di oggi per il calendario "${calendarName}"?`,
-      )
+      window.confirm(`${Testi.condiviso.alertSvuotaOggi} "${calendarName}"?`)
     ) {
       try {
         const batch = writeBatch(db);
@@ -148,15 +147,15 @@ export default function SchermataOggiCondivisa() {
     try {
       const supported = await Linking.canOpenURL(url);
       if (supported) await Linking.openURL(url);
-      else alert("Impossibile aprire il link.");
+      else alert(Testi.alert.erroreLink);
     } catch (error) {
-      alert("Errore");
+      alert(Testi.alert.erroreLink);
     }
   };
 
   const openNewTaskModal = () => {
     if (!activeSharedCalendarId) {
-      alert("Seleziona prima un calendario condiviso dalla sezione Gestione.");
+      alert(Testi.condiviso.nessunCalendario);
       return;
     }
     setTaskToEdit(null);
@@ -172,18 +171,18 @@ export default function SchermataOggiCondivisa() {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>Oggi</Text>
+          <Text style={styles.title}>{Testi.condiviso.oggiTitle}</Text>
           <TouchableOpacity onPress={() => auth.signOut()}>
             <Ionicons
               name="log-out-outline"
               size={28}
-              color={theme.colors.error}
+              color={PaletteColori.condiviso.error}
             />
           </TouchableOpacity>
         </View>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
-            Nessun calendario collegato. Vai nella sezione Gestione.
+            {Testi.condiviso.nessunCalendario}
           </Text>
         </View>
       </View>
@@ -195,7 +194,7 @@ export default function SchermataOggiCondivisa() {
       <View style={styles.header}>
         <View style={{ flexDirection: "column" }}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-            <Text style={styles.title}>Oggi</Text>
+            <Text style={styles.title}>{Testi.condiviso.oggiTitle}</Text>
             {tasks.length > 0 ? (
               <TouchableOpacity
                 onPress={resetTodayTasks}
@@ -204,7 +203,7 @@ export default function SchermataOggiCondivisa() {
                 <Ionicons
                   name="reload-outline"
                   size={22}
-                  color={theme.colors.error}
+                  color={PaletteColori.condiviso.error}
                 />
               </TouchableOpacity>
             ) : null}
@@ -222,7 +221,7 @@ export default function SchermataOggiCondivisa() {
             <Ionicons
               name="log-out-outline"
               size={28}
-              color={theme.colors.error}
+              color={PaletteColori.condiviso.error}
             />
           </TouchableOpacity>
         </View>
@@ -235,7 +234,9 @@ export default function SchermataOggiCondivisa() {
 
         {tasks.length === 0 ? (
           <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>Nessun task condiviso per oggi</Text>
+            <Text style={styles.emptyText}>
+              {Testi.condiviso.nessunTaskOggi}
+            </Text>
           </View>
         ) : (
           tasks.map((task) => (
@@ -256,7 +257,9 @@ export default function SchermataOggiCondivisa() {
                   }
                   size={28}
                   color={
-                    task.isCompleted ? theme.colors.textSecondary : task.color
+                    task.isCompleted
+                      ? PaletteColori.condiviso.textSecondary
+                      : task.color
                   }
                 />
               </TouchableOpacity>
@@ -275,7 +278,7 @@ export default function SchermataOggiCondivisa() {
                 </Text>
                 <Text style={styles.taskTime}>
                   {task.isAllDay
-                    ? "Tutto il giorno"
+                    ? Testi.modali.tuttoIlGiorno
                     : `${task.startTime} - ${task.endTime}`}
                 </Text>
                 {task.description ? (
@@ -298,7 +301,7 @@ export default function SchermataOggiCondivisa() {
                     <Ionicons
                       name="link"
                       size={22}
-                      color={theme.colors.primaryShared}
+                      color={PaletteColori.condiviso.primary}
                     />
                   </TouchableOpacity>
                 ) : null}
@@ -309,7 +312,7 @@ export default function SchermataOggiCondivisa() {
                   <Ionicons
                     name="pencil-outline"
                     size={22}
-                    color={theme.colors.primaryShared}
+                    color={PaletteColori.condiviso.primary}
                   />
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -319,7 +322,7 @@ export default function SchermataOggiCondivisa() {
                   <Ionicons
                     name="trash-outline"
                     size={22}
-                    color={theme.colors.error}
+                    color={PaletteColori.condiviso.error}
                   />
                 </TouchableOpacity>
               </View>
@@ -343,82 +346,93 @@ export default function SchermataOggiCondivisa() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: theme.colors.sharedBackground },
+  container: { flex: 1, backgroundColor: PaletteColori.condiviso.background },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-start",
-    padding: theme.spacing.l,
-    paddingBottom: theme.spacing.s,
-    paddingTop: theme.spacing.l * 2,
+    padding: PaletteColori.spacing.l,
+    paddingBottom: PaletteColori.spacing.s,
+    paddingTop: PaletteColori.spacing.l * 2,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
   },
   headerSubtitle: {
     fontSize: 16,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     fontWeight: "bold",
     marginTop: 2,
   },
   resetButton: { padding: 6, backgroundColor: "#FFE5E5", borderRadius: 12 },
-  scrollContent: { padding: theme.spacing.l, paddingBottom: 100 },
+  scrollContent: { padding: PaletteColori.spacing.l, paddingBottom: 100 },
   dateHeaderCard: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   dateText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
     textTransform: "capitalize",
   },
   emptyCard: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.l,
-    borderRadius: theme.borderRadius.card,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    padding: PaletteColori.spacing.l,
+    borderRadius: PaletteColori.borderRadius.card,
     alignItems: "center",
   },
-  emptyText: { color: theme.colors.textSecondary, textAlign: "center" },
+  emptyText: {
+    color: PaletteColori.condiviso.textSecondary,
+    textAlign: "center",
+  },
   taskCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
   },
   taskCompleted: { opacity: 0.6 },
-  taskCheckbox: { marginRight: theme.spacing.m },
+  taskCheckbox: { marginRight: PaletteColori.spacing.m },
   taskContent: { flex: 1, justifyContent: "center" },
-  taskTitle: { fontSize: 16, color: theme.colors.textMain, fontWeight: "bold" },
+  taskTitle: {
+    fontSize: 16,
+    color: PaletteColori.condiviso.textMain,
+    fontWeight: "bold",
+  },
   taskTitleCompleted: {
     textDecorationLine: "line-through",
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
   },
-  taskTime: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 },
+  taskTime: {
+    fontSize: 12,
+    color: PaletteColori.condiviso.textSecondary,
+    marginTop: 2,
+  },
   taskDescription: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginTop: 4,
     fontStyle: "italic",
   },
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: theme.spacing.s,
+    marginLeft: PaletteColori.spacing.s,
   },
   actionButton: { padding: 6, marginLeft: 4 },
   fab: {
     position: "absolute",
-    bottom: theme.spacing.l,
-    right: theme.spacing.l,
-    backgroundColor: theme.colors.primaryShared,
+    bottom: PaletteColori.spacing.l,
+    right: PaletteColori.spacing.l,
+    backgroundColor: PaletteColori.condiviso.primary,
     width: 60,
     height: 60,
     borderRadius: 30,

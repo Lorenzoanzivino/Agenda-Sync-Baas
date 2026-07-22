@@ -17,11 +17,12 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-import { auth, db } from "../config/firebase";
-import { theme } from "../constants/theme";
+import { auth, db } from "../../config/firebase";
+import { PaletteColori } from "../../palette_e_testi/PaletteColori";
+import { Testi } from "../../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
-import { useAuthStore } from "../store/useAuthStore";
-import TaskModal from "../components/TaskModal";
+import { useAuthStore } from "../../store/useAuthStore";
+import TaskModal from "../../components/TaskModal";
 
 export default function PrivateTodayScreen() {
   const { user, userData } = useAuthStore();
@@ -37,15 +38,11 @@ export default function PrivateTodayScreen() {
   });
   const todayISO = todayObj.toISOString().split("T")[0]; // YYYY-MM-DD
 
-  // Estraiamo MM-DD da todayISO (es. "09-09")
   const todayDayMonth = todayISO.substring(5);
-
-  // Estraiamo MM-DD dalla data di nascita salvata (DD-MM-YYYY) se esiste
   let isBirthday = false;
   if (userData?.birthDate) {
     const parts = userData.birthDate.split("-");
     if (parts.length === 3) {
-      // Invertiamo per avere MM-DD
       const birthDayMonth = `${parts[1]}-${parts[0]}`;
       if (todayDayMonth === birthDayMonth) {
         isBirthday = true;
@@ -85,14 +82,14 @@ export default function PrivateTodayScreen() {
   };
 
   const deleteTask = async (id) => {
-    if (window.confirm("Vuoi davvero eliminare questo task?")) {
+    if (window.confirm(Testi.modali.alertEliminaTask)) {
       await deleteDoc(doc(db, "private_tasks", id));
     }
   };
 
   const resetTodayTasks = async () => {
     if (tasks.length === 0) return;
-    if (window.confirm("Sei sicuro di voler svuotare tutti i task di oggi?")) {
+    if (window.confirm(Testi.privato.alertSvuotaOggi)) {
       try {
         const batch = writeBatch(db);
         tasks.forEach((t) => {
@@ -111,12 +108,10 @@ export default function PrivateTodayScreen() {
       if (supported) {
         await Linking.openURL(url);
       } else {
-        alert(
-          "Impossibile aprire il link. Verifica che l'URL sia corretto (es: https://...)",
-        );
+        alert(Testi.alert.erroreLink);
       }
     } catch (error) {
-      alert("Errore nell'apertura del link.");
+      alert(Testi.alert.erroreLink);
     }
   };
 
@@ -137,9 +132,11 @@ export default function PrivateTodayScreen() {
           <Text style={{ fontSize: 28 }}>🎂</Text>
         </View>
         <View style={styles.taskContent}>
-          <Text style={styles.birthdayTitle}>Tanti Auguri!</Text>
+          <Text style={styles.birthdayTitle}>
+            {Testi.privato.compleannoTitolo}
+          </Text>
           <Text style={styles.birthdayText}>
-            Oggi è il tuo compleanno! Goditi questa giornata.
+            {Testi.privato.compleannoTesto}
           </Text>
         </View>
       </View>
@@ -150,7 +147,7 @@ export default function PrivateTodayScreen() {
     if (tasks.length === 0) {
       return (
         <View style={styles.emptyCard}>
-          <Text style={styles.emptyText}>Nessun task per oggi</Text>
+          <Text style={styles.emptyText}>{Testi.privato.nessunTaskOggi}</Text>
         </View>
       );
     }
@@ -167,7 +164,11 @@ export default function PrivateTodayScreen() {
           <Ionicons
             name={task.isCompleted ? "checkmark-circle" : "ellipse-outline"}
             size={28}
-            color={task.isCompleted ? theme.colors.textSecondary : task.color}
+            color={
+              task.isCompleted
+                ? PaletteColori.privato.textSecondary
+                : task.color
+            }
           />
         </TouchableOpacity>
 
@@ -186,7 +187,7 @@ export default function PrivateTodayScreen() {
 
           <Text style={styles.taskTime}>
             {task.isAllDay
-              ? "Tutto il giorno"
+              ? Testi.modali.tuttoIlGiorno
               : `${task.startTime} - ${task.endTime}`}
           </Text>
 
@@ -210,7 +211,7 @@ export default function PrivateTodayScreen() {
               <Ionicons
                 name="link"
                 size={22}
-                color={theme.colors.primaryPrivate}
+                color={PaletteColori.privato.primary}
               />
             </TouchableOpacity>
           ) : null}
@@ -222,7 +223,7 @@ export default function PrivateTodayScreen() {
             <Ionicons
               name="pencil-outline"
               size={22}
-              color={theme.colors.primaryPrivate}
+              color={PaletteColori.privato.primary}
             />
           </TouchableOpacity>
 
@@ -233,7 +234,7 @@ export default function PrivateTodayScreen() {
             <Ionicons
               name="trash-outline"
               size={22}
-              color={theme.colors.error}
+              color={PaletteColori.privato.error}
             />
           </TouchableOpacity>
         </View>
@@ -245,7 +246,7 @@ export default function PrivateTodayScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-          <Text style={styles.title}>Oggi</Text>
+          <Text style={styles.title}>{Testi.privato.oggiTitle}</Text>
           {tasks.length > 0 ? (
             <TouchableOpacity
               onPress={resetTodayTasks}
@@ -254,7 +255,7 @@ export default function PrivateTodayScreen() {
               <Ionicons
                 name="reload-outline"
                 size={22}
-                color={theme.colors.error}
+                color={PaletteColori.privato.error}
               />
             </TouchableOpacity>
           ) : null}
@@ -264,7 +265,7 @@ export default function PrivateTodayScreen() {
           <Ionicons
             name="log-out-outline"
             size={28}
-            color={theme.colors.error}
+            color={PaletteColori.privato.error}
           />
         </TouchableOpacity>
       </View>
@@ -295,20 +296,20 @@ export default function PrivateTodayScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.privateBackground,
+    backgroundColor: PaletteColori.privato.background,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: theme.spacing.l,
-    paddingBottom: theme.spacing.s,
-    paddingTop: theme.spacing.l * 2,
+    padding: PaletteColori.spacing.l,
+    paddingBottom: PaletteColori.spacing.s,
+    paddingTop: PaletteColori.spacing.l * 2,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.privato.primary,
   },
   resetButton: {
     padding: 6,
@@ -316,62 +317,62 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   scrollContent: {
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
     paddingBottom: 100,
   },
   dateHeaderCard: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   dateText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     textTransform: "capitalize",
   },
   emptyCard: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.l,
-    borderRadius: theme.borderRadius.card,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    padding: PaletteColori.spacing.l,
+    borderRadius: PaletteColori.borderRadius.card,
     alignItems: "center",
   },
   emptyText: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
   },
   birthdayCard: {
-    backgroundColor: "#FFF0F5",
+    backgroundColor: PaletteColori.privato.birthdayBackground,
     borderWidth: 2,
-    borderColor: "#FF69B4",
+    borderColor: PaletteColori.privato.birthdayBadge,
   },
   birthdayIconBox: {
-    marginRight: theme.spacing.m,
+    marginRight: PaletteColori.spacing.m,
   },
   birthdayTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#FF1493",
+    color: PaletteColori.privato.birthdayBadge,
   },
   birthdayText: {
     fontSize: 14,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     marginTop: 2,
   },
   taskCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
   },
   taskCompleted: {
     opacity: 0.6,
   },
   taskCheckbox: {
-    marginRight: theme.spacing.m,
+    marginRight: PaletteColori.spacing.m,
   },
   taskContent: {
     flex: 1,
@@ -379,28 +380,28 @@ const styles = StyleSheet.create({
   },
   taskTitle: {
     fontSize: 16,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     fontWeight: "bold",
   },
   taskTitleCompleted: {
     textDecorationLine: "line-through",
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
   },
   taskTime: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     marginTop: 2,
   },
   taskDescription: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     marginTop: 4,
     fontStyle: "italic",
   },
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: theme.spacing.s,
+    marginLeft: PaletteColori.spacing.s,
   },
   actionButton: {
     padding: 6,
@@ -408,18 +409,14 @@ const styles = StyleSheet.create({
   },
   fab: {
     position: "absolute",
-    bottom: theme.spacing.l,
-    right: theme.spacing.l,
-    backgroundColor: theme.colors.primaryPrivate,
+    bottom: PaletteColori.spacing.l,
+    right: PaletteColori.spacing.l,
+    backgroundColor: PaletteColori.privato.primary,
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
     elevation: 4,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
   },
 });

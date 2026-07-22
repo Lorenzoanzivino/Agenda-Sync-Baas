@@ -2,10 +2,12 @@ import React from "react";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 
-import PrivateTodayScreen from "../screens/PrivateTodayScreen";
-import PrivateCalendarScreen from "../screens/PrivateCalendarScreen";
+// I file ora si trovano nella sottocartella "privato/"
+import PrivateTodayScreen from "../screens/privato/PrivateTodayScreen";
+import PrivateCalendarScreen from "../screens/privato/PrivateCalendarScreen";
 
 const Tab = createBottomTabNavigator();
 
@@ -25,10 +27,10 @@ export default function PrivateNavigator() {
           }
           return <Ionicons name={iconName} size={size} color={color} />;
         },
-        tabBarActiveTintColor: theme.colors.primaryPrivate,
-        tabBarInactiveTintColor: theme.colors.textSecondary,
+        tabBarActiveTintColor: PaletteColori.privato.primary,
+        tabBarInactiveTintColor: PaletteColori.privato.textSecondary,
         tabBarStyle: {
-          backgroundColor: theme.colors.cardBackground,
+          backgroundColor: PaletteColori.privato.cardBackground,
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
@@ -45,12 +47,12 @@ export default function PrivateNavigator() {
       <Tab.Screen
         name="Today"
         component={PrivateTodayScreen}
-        options={{ title: "Oggi" }}
+        options={{ title: Testi.privato.oggiTitle }}
       />
       <Tab.Screen
         name="Calendar"
         component={PrivateCalendarScreen}
-        options={{ title: "Calendario" }}
+        options={{ title: Testi.privato.calendarioTitle }}
       />
     </Tab.Navigator>
   );

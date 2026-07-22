@@ -9,7 +9,8 @@ import {
 } from "react-native";
 import { signInWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../config/firebase";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState("");
@@ -19,7 +20,7 @@ export default function LoginScreen({ navigation }) {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      setError("Compila tutti i campi");
+      setError(Testi.auth.errorFillAll);
       return;
     }
     setLoading(true);
@@ -27,7 +28,7 @@ export default function LoginScreen({ navigation }) {
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
-      setError("Credenziali non valide");
+      setError(Testi.auth.errorLogin);
     } finally {
       setLoading(false);
     }
@@ -36,13 +37,13 @@ export default function LoginScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>Bentornato</Text>
+        <Text style={styles.title}>{Testi.auth.loginTitle}</Text>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <TextInput
           style={styles.input}
-          placeholder="Email"
+          placeholder={Testi.auth.emailPlaceholder}
           autoCapitalize="none"
           keyboardType="email-address"
           value={email}
@@ -51,7 +52,7 @@ export default function LoginScreen({ navigation }) {
 
         <TextInput
           style={styles.input}
-          placeholder="Password"
+          placeholder={Testi.auth.passwordPlaceholder}
           secureTextEntry
           value={password}
           onChangeText={setPassword}
@@ -65,7 +66,7 @@ export default function LoginScreen({ navigation }) {
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.buttonText}>Accedi</Text>
+            <Text style={styles.buttonText}>{Testi.auth.loginButton}</Text>
           )}
         </TouchableOpacity>
 
@@ -73,7 +74,7 @@ export default function LoginScreen({ navigation }) {
           onPress={() => navigation.navigate("Register")}
           style={styles.linkButton}
         >
-          <Text style={styles.linkText}>Non hai un account? Registrati</Text>
+          <Text style={styles.linkText}>{Testi.auth.linkToRegister}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -83,35 +84,35 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.privateBackground,
+    backgroundColor: PaletteColori.auth.background,
     justifyContent: "center",
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
   },
   card: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.l,
-    borderRadius: theme.borderRadius.card,
-    gap: theme.spacing.m,
+    backgroundColor: PaletteColori.auth.cardBackground,
+    padding: PaletteColori.spacing.l,
+    borderRadius: PaletteColori.borderRadius.card,
+    gap: PaletteColori.spacing.m,
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    color: theme.colors.textMain,
-    marginBottom: theme.spacing.s,
+    color: PaletteColori.auth.textMain,
+    marginBottom: PaletteColori.spacing.s,
     textAlign: "center",
   },
   input: {
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
-    color: theme.colors.textMain,
+    backgroundColor: PaletteColori.auth.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
+    color: PaletteColori.auth.textMain,
   },
   button: {
-    backgroundColor: theme.colors.primaryPrivate,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
+    backgroundColor: PaletteColori.auth.primary,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.button,
     alignItems: "center",
-    marginTop: theme.spacing.s,
+    marginTop: PaletteColori.spacing.s,
   },
   buttonText: {
     color: "#FFF",
@@ -120,13 +121,13 @@ const styles = StyleSheet.create({
   },
   linkButton: {
     alignItems: "center",
-    marginTop: theme.spacing.s,
+    marginTop: PaletteColori.spacing.s,
   },
   linkText: {
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.auth.primary,
   },
   error: {
-    color: theme.colors.error,
+    color: PaletteColori.auth.error,
     textAlign: "center",
   },
 });

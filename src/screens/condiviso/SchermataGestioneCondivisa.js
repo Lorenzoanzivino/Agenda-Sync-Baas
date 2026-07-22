@@ -13,7 +13,7 @@ import {
   addDoc,
   doc,
   getDoc,
-  getDocs, // <- IL BUG ERA QUI! Mancava l'import!
+  getDocs,
   updateDoc,
   arrayUnion,
   arrayRemove,
@@ -23,9 +23,10 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../config/firebase";
-import { theme } from "../constants/theme";
-import { useAuthStore } from "../store/useAuthStore";
+import { db } from "../../config/firebase";
+import { PaletteColori } from "../../palette_e_testi/PaletteColori";
+import { Testi } from "../../palette_e_testi/Testi";
+import { useAuthStore } from "../../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function SchermataGestioneCondivisa() {
@@ -139,12 +140,9 @@ export default function SchermataGestioneCondivisa() {
 
     if (isOwner) {
       if (
-        window.confirm(
-          "Sei il proprietario di questo calendario. Vuoi ELIMINARE definitivamente il calendario e tutti i suoi task per tutti i membri?",
-        )
+        window.confirm(Testi.condiviso.alertEliminaCalendario)
       ) {
         try {
-          // Elimina tutti i task collegati al calendario
           const qTasks = query(
             collection(db, "shared_tasks"),
             where("calendarId", "==", activeSharedCalendarId),
@@ -154,7 +152,6 @@ export default function SchermataGestioneCondivisa() {
           snapTasks.forEach((t) => batch.delete(doc(db, "shared_tasks", t.id)));
           await batch.commit();
 
-          // Elimina il calendario stesso
           await deleteDoc(doc(db, "shared_calendars", activeSharedCalendarId));
         } catch (error) {
           console.error("Errore eliminazione calendario:", error);
@@ -163,9 +160,7 @@ export default function SchermataGestioneCondivisa() {
       }
     } else {
       if (
-        window.confirm(
-          "Vuoi USCIRE da questo calendario condiviso? Non vedrai più i suoi eventi.",
-        )
+        window.confirm(Testi.condiviso.alertEsciCalendario)
       ) {
         try {
           const calRef = doc(db, "shared_calendars", activeSharedCalendarId);
@@ -182,9 +177,9 @@ export default function SchermataGestioneCondivisa() {
     if (activeSharedCalendarId) {
       if (navigator.clipboard) {
         navigator.clipboard.writeText(activeSharedCalendarId);
-        alert("Codice OTP copiato negli appunti!");
+        alert(Testi.alert.otpCopiato);
       } else {
-        alert(`Codice OTP: ${activeSharedCalendarId}`);
+        alert(`${Testi.alert.otpCode} ${activeSharedCalendarId}`);
       }
     }
   };
@@ -192,7 +187,7 @@ export default function SchermataGestioneCondivisa() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Gestione</Text>
+        <Text style={styles.title}>{Testi.condiviso.gestioneTitle}</Text>
       </View>
 
       {errorMsg !== "" ? (
@@ -204,7 +199,7 @@ export default function SchermataGestioneCondivisa() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {mySharedCalendars.length > 0 ? (
           <View style={styles.sectionBox}>
-            <Text style={styles.sectionLabel}>I Tuoi Calendari Condivisi:</Text>
+            <Text style={styles.sectionLabel}>{Testi.condiviso.sezioneITuoiCalendari}</Text>
             <ScrollView
               horizontal
               showsHorizontalScrollIndicator={false}
@@ -242,7 +237,7 @@ export default function SchermataGestioneCondivisa() {
                   {activeCalendarData.name}
                 </Text>
                 <Text style={styles.activeCardSub}>
-                  Membri: {activeCalendarData.members?.length || 1}
+                  {Testi.condiviso.membri} {activeCalendarData.members?.length || 1}
                 </Text>
               </View>
               <TouchableOpacity
@@ -252,7 +247,7 @@ export default function SchermataGestioneCondivisa() {
                 <Ionicons
                   name="trash-outline"
                   size={24}
-                  color={theme.colors.error}
+                  color={PaletteColori.condiviso.error}
                 />
               </TouchableOpacity>
             </View>
@@ -262,14 +257,14 @@ export default function SchermataGestioneCondivisa() {
               onPress={copyOtpToClipboard}
             >
               <Text style={styles.otpLabel}>
-                Codice OTP (Tocca per copiare):
+                {Testi.condiviso.otpLabel}
               </Text>
               <View style={styles.otpCodeRow}>
                 <Text style={styles.otpCodeText}>{activeSharedCalendarId}</Text>
                 <Ionicons
                   name="copy-outline"
                   size={20}
-                  color={theme.colors.primaryShared}
+                  color={PaletteColori.condiviso.primary}
                 />
               </View>
             </TouchableOpacity>
@@ -277,16 +272,16 @@ export default function SchermataGestioneCondivisa() {
         ) : (
           <View style={styles.emptyCard}>
             <Text style={styles.emptyText}>
-              Non sei collegato a nessun calendario condiviso.
+              {Testi.condiviso.nessunCalendario}
             </Text>
           </View>
         )}
 
         <View style={styles.actionCard}>
-          <Text style={styles.cardHeaderTitle}>Crea Nuovo Calendario</Text>
+          <Text style={styles.cardHeaderTitle}>{Testi.condiviso.creaNuovoTitle}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Nome calendario (es. Casa, Lavoro...)"
+            placeholder={Testi.condiviso.nomeCalendarioPlaceholder}
             value={newCalendarName}
             onChangeText={setNewCalendarName}
           />
@@ -298,16 +293,16 @@ export default function SchermataGestioneCondivisa() {
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonText}>Crea e Genera OTP</Text>
+              <Text style={styles.buttonText}>{Testi.condiviso.btnCreaGenera}</Text>
             )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.actionCard}>
-          <Text style={styles.cardHeaderTitle}>Unisciti con Codice OTP</Text>
+          <Text style={styles.cardHeaderTitle}>{Testi.condiviso.uniscitiTitle}</Text>
           <TextInput
             style={styles.input}
-            placeholder="Incolla qui il codice OTP..."
+            placeholder={Testi.condiviso.otpPlaceholder}
             value={otpInput}
             onChangeText={setOtpInput}
             autoCapitalize="none"
@@ -320,7 +315,7 @@ export default function SchermataGestioneCondivisa() {
             {loading ? (
               <ActivityIndicator color="#FFF" />
             ) : (
-              <Text style={styles.buttonTextSecondary}>Unisciti</Text>
+              <Text style={styles.buttonTextSecondary}>{Testi.condiviso.btnUnisciti}</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -332,44 +327,44 @@ export default function SchermataGestioneCondivisa() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.sharedBackground,
-    paddingTop: theme.spacing.l * 2,
+    backgroundColor: PaletteColori.condiviso.background,
+    paddingTop: PaletteColori.spacing.l * 2,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: theme.spacing.l,
-    marginBottom: theme.spacing.m,
+    paddingHorizontal: PaletteColori.spacing.l,
+    marginBottom: PaletteColori.spacing.m,
   },
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
   },
   errorBanner: {
     backgroundColor: "#FFE5E5",
-    padding: theme.spacing.m,
-    marginHorizontal: theme.spacing.l,
-    borderRadius: theme.borderRadius.input,
-    marginBottom: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
+    marginHorizontal: PaletteColori.spacing.l,
+    borderRadius: PaletteColori.borderRadius.input,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorText: {
-    color: theme.colors.error,
+    color: PaletteColori.condiviso.error,
     fontWeight: "bold",
     textAlign: "center",
   },
-  scrollContent: { paddingHorizontal: theme.spacing.l, paddingBottom: 100 },
-  sectionBox: { marginBottom: theme.spacing.m },
+  scrollContent: { paddingHorizontal: PaletteColori.spacing.l, paddingBottom: 100 },
+  sectionBox: { marginBottom: PaletteColori.spacing.m },
   sectionLabel: {
     fontSize: 14,
     fontWeight: "bold",
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.s,
+    color: PaletteColori.condiviso.textSecondary,
+    marginBottom: PaletteColori.spacing.s,
   },
   chipsRow: { flexDirection: "row" },
   chip: {
-    backgroundColor: theme.colors.cardBackground,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
@@ -378,16 +373,16 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   chipActive: {
-    borderColor: theme.colors.primaryShared,
+    borderColor: PaletteColori.condiviso.primary,
     backgroundColor: "#FFE0B2",
   },
-  chipText: { fontSize: 14, color: theme.colors.textMain },
-  chipTextActive: { fontWeight: "bold", color: theme.colors.primaryShared },
+  chipText: { fontSize: 14, color: PaletteColori.condiviso.textMain },
+  chipTextActive: { fontWeight: "bold", color: PaletteColori.condiviso.primary },
   activeCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.l,
-    marginBottom: theme.spacing.m,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    borderRadius: PaletteColori.borderRadius.card,
+    padding: PaletteColori.spacing.l,
+    marginBottom: PaletteColori.spacing.m,
   },
   activeCardHeader: {
     flexDirection: "row",
@@ -402,22 +397,22 @@ const styles = StyleSheet.create({
   activeCardTitle: {
     fontSize: 22,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
   },
   activeCardSub: {
     fontSize: 14,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginTop: 2,
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   otpBox: {
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
   },
   otpLabel: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginBottom: 4,
   },
   otpCodeRow: {
@@ -428,56 +423,56 @@ const styles = StyleSheet.create({
   otpCodeText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
   },
   emptyCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.l,
-    marginBottom: theme.spacing.m,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    borderRadius: PaletteColori.borderRadius.card,
+    padding: PaletteColori.spacing.l,
+    marginBottom: PaletteColori.spacing.m,
     alignItems: "center",
   },
   emptyText: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     textAlign: "center",
     fontStyle: "italic",
   },
   actionCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.l,
-    marginBottom: theme.spacing.m,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    borderRadius: PaletteColori.borderRadius.card,
+    padding: PaletteColori.spacing.l,
+    marginBottom: PaletteColori.spacing.m,
   },
   cardHeaderTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: theme.colors.textMain,
-    marginBottom: theme.spacing.m,
+    color: PaletteColori.condiviso.textMain,
+    marginBottom: PaletteColori.spacing.m,
   },
   input: {
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
     fontSize: 16,
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   buttonPrimary: {
-    backgroundColor: theme.colors.primaryShared,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
+    backgroundColor: PaletteColori.condiviso.primary,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.button,
     alignItems: "center",
   },
   buttonText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
   buttonSecondary: {
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.button,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: theme.colors.primaryShared,
+    borderColor: PaletteColori.condiviso.primary,
   },
   buttonTextSecondary: {
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
     fontWeight: "bold",
     fontSize: 16,
   },

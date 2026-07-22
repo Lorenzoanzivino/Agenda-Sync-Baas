@@ -7,7 +7,9 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { auth } from "./src/config/firebase";
 import { useAuthStore } from "./src/store/useAuthStore";
+import { PaletteColori } from "./src/palette_e_testi/PaletteColori";
 
+// Percorsi aggiornati per Login e Register (ora sono nella root di screens)
 import LoginScreen from "./src/screens/LoginScreen";
 import RegisterScreen from "./src/screens/RegisterScreen";
 import MainNavigator from "./src/navigation/MainNavigator";
@@ -22,7 +24,6 @@ export default function App() {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        // Scarica i dati aggiuntivi dell'utente (es. birthDate) dal database
         await fetchUserData(currentUser.uid);
       }
       setLoading(false);
@@ -33,7 +34,7 @@ export default function App() {
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <ActivityIndicator size="large" color="#0A84FF" />
+        <ActivityIndicator size="large" color={PaletteColori.auth.primary} />
       </View>
     );
   }
