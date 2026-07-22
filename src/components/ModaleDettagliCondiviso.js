@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function ModaleDettagliCondiviso({
@@ -53,7 +54,7 @@ export default function ModaleDettagliCondiviso({
                   <Ionicons
                     name="reload-outline"
                     size={22}
-                    color={theme.colors.error}
+                    color={PaletteColori.condiviso.error}
                   />
                 </TouchableOpacity>
               ) : null}
@@ -63,7 +64,7 @@ export default function ModaleDettagliCondiviso({
               <Ionicons
                 name="close-circle"
                 size={28}
-                color={theme.colors.textSecondary}
+                color={PaletteColori.condiviso.textSecondary}
               />
             </TouchableOpacity>
           </View>
@@ -94,7 +95,7 @@ export default function ModaleDettagliCondiviso({
 
                     <Text style={styles.taskTime}>
                       {task.isAllDay
-                        ? "Tutto il giorno"
+                        ? Testi.modali.tuttoIlGiorno
                         : `${task.startTime} - ${task.endTime}`}
                     </Text>
 
@@ -118,7 +119,7 @@ export default function ModaleDettagliCondiviso({
                         <Ionicons
                           name="link"
                           size={22}
-                          color={theme.colors.primaryShared}
+                          color={PaletteColori.condiviso.primary}
                         />
                       </TouchableOpacity>
                     ) : null}
@@ -130,7 +131,7 @@ export default function ModaleDettagliCondiviso({
                       <Ionicons
                         name="pencil-outline"
                         size={22}
-                        color={theme.colors.primaryShared}
+                        color={PaletteColori.condiviso.primary}
                       />
                     </TouchableOpacity>
 
@@ -141,7 +142,7 @@ export default function ModaleDettagliCondiviso({
                       <Ionicons
                         name="trash-outline"
                         size={22}
-                        color={theme.colors.error}
+                        color={PaletteColori.condiviso.error}
                       />
                     </TouchableOpacity>
                   </View>
@@ -150,7 +151,7 @@ export default function ModaleDettagliCondiviso({
             ) : (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  Nessun evento in questa data.
+                  {Testi.modali.nessunEventoData}
                 </Text>
               </View>
             )}
@@ -168,10 +169,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: theme.colors.cardBackground,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
     minHeight: "50%",
     maxHeight: "85%",
   },
@@ -179,17 +180,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.l,
+    marginBottom: PaletteColori.spacing.l,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
     textTransform: "capitalize",
   },
   addButton: {
     padding: 6,
-    backgroundColor: theme.colors.primaryShared,
+    backgroundColor: PaletteColori.condiviso.primary,
     borderRadius: 12,
   },
   resetButton: { padding: 6, backgroundColor: "#FFE5E5", borderRadius: 12 },
@@ -197,36 +198,47 @@ const styles = StyleSheet.create({
   taskCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
   },
   colorIndicator: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: theme.spacing.m,
+    marginRight: PaletteColori.spacing.m,
   },
   taskContent: { flex: 1, justifyContent: "center" },
-  taskTitle: { fontSize: 16, fontWeight: "bold", color: theme.colors.textMain },
+  taskTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    color: PaletteColori.condiviso.textMain,
+  },
   taskTitleCompleted: {
     textDecorationLine: "line-through",
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
   },
-  taskTime: { fontSize: 12, color: theme.colors.textSecondary, marginTop: 2 },
+  taskTime: {
+    fontSize: 12,
+    color: PaletteColori.condiviso.textSecondary,
+    marginTop: 2,
+  },
   taskDescription: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginTop: 4,
     fontStyle: "italic",
   },
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: theme.spacing.s,
+    marginLeft: PaletteColori.spacing.s,
   },
   actionButton: { padding: 6, marginLeft: 4 },
-  emptyContainer: { padding: theme.spacing.l, alignItems: "center" },
-  emptyText: { color: theme.colors.textSecondary, fontStyle: "italic" },
+  emptyContainer: { padding: PaletteColori.spacing.l, alignItems: "center" },
+  emptyText: {
+    color: PaletteColori.condiviso.textSecondary,
+    fontStyle: "italic",
+  },
 });

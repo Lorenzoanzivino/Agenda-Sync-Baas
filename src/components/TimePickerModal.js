@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Modal, View, Text, TouchableOpacity, StyleSheet } from "react-native";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 
 export default function TimePickerModal({
   visible,
@@ -8,7 +9,7 @@ export default function TimePickerModal({
   onConfirm,
   initialTime,
 }) {
-  const [mode, setMode] = useState("h"); // 'h' per ore, 'm' per minuti
+  const [mode, setMode] = useState("h");
   const [hour, setHour] = useState("09");
   const [minute, setMinute] = useState("00");
 
@@ -16,7 +17,7 @@ export default function TimePickerModal({
     if (visible && initialTime) {
       setHour(initialTime.split(":")[0]);
       setMinute(initialTime.split(":")[1]);
-      setMode("h"); // Inizia sempre dalla selezione dell'ora
+      setMode("h");
     }
   }, [visible, initialTime]);
 
@@ -25,17 +26,15 @@ export default function TimePickerModal({
   };
 
   const renderClockFace = () => {
-    const center = 130; // Centro del quadrante (260/2)
-    const itemRadius = 18; // Metà della larghezza del cerchietto (36/2)
+    const center = 130;
+    const itemRadius = 18;
 
     if (mode === "h") {
-      // Rendering delle 24 ore in due anelli (esterno 1-12, interno 13-00)
       const hours = Array.from({ length: 24 }, (_, i) => i);
       return hours.map((h) => {
         const isInner = h === 0 || h > 12;
         const displayH = h.toString().padStart(2, "0");
         const radius = isInner ? 65 : 105;
-        // Calcolo dell'angolo: 12 e 0 in alto (-90 gradi), ogni ora = 30 gradi
         const angle = ((h % 12 || 12) * 30 - 90) * (Math.PI / 180);
         const x = center + radius * Math.cos(angle) - itemRadius;
         const y = center + radius * Math.sin(angle) - itemRadius;
@@ -52,7 +51,7 @@ export default function TimePickerModal({
             ]}
             onPress={() => {
               setHour(displayH);
-              setMode("m"); // Passa ai minuti in automatico
+              setMode("m");
             }}
           >
             <Text
@@ -67,14 +66,12 @@ export default function TimePickerModal({
         );
       });
     } else {
-      // Rendering dei minuti (salti di 5 minuti per mostrare l'intero cerchio)
       const minutes = Array.from({ length: 12 }, (_, i) =>
         (i * 5).toString().padStart(2, "0"),
       );
 
       return minutes.map((m, index) => {
         const radius = 105;
-        // 12 elementi: salti di 30 gradi (esattamente come le ore)
         const angle = (index * 30 - 90) * (Math.PI / 180);
         const x = center + radius * Math.cos(angle) - itemRadius;
         const y = center + radius * Math.sin(angle) - itemRadius;
@@ -148,7 +145,9 @@ export default function TimePickerModal({
 
           <View style={styles.actions}>
             <TouchableOpacity onPress={onClose} style={styles.button}>
-              <Text style={styles.buttonTextCancel}>ANNULLA</Text>
+              <Text style={styles.buttonTextCancel}>
+                {Testi.modali.btnAnnulla.toUpperCase()}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={handleConfirm} style={styles.button}>
               <Text style={styles.buttonTextConfirm}>OK</Text>
@@ -181,7 +180,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   headerBox: {
-    backgroundColor: theme.colors.privateBackground,
+    backgroundColor: PaletteColori.privato.background,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 12,
@@ -191,16 +190,16 @@ const styles = StyleSheet.create({
   },
   headerText: {
     fontSize: 48,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     fontWeight: "400",
   },
   headerTextActive: {
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.privato.primary,
     fontWeight: "bold",
   },
   headerSeparator: {
     fontSize: 48,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     marginHorizontal: 8,
     marginBottom: 8,
   },
@@ -208,7 +207,7 @@ const styles = StyleSheet.create({
     width: 260,
     height: 260,
     borderRadius: 130,
-    backgroundColor: theme.colors.privateBackground,
+    backgroundColor: PaletteColori.privato.background,
     position: "relative",
     marginBottom: 24,
   },
@@ -216,7 +215,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: theme.colors.primaryPrivate,
+    backgroundColor: PaletteColori.privato.primary,
     position: "absolute",
     top: 126,
     left: 126,
@@ -230,11 +229,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   clockItemSelected: {
-    backgroundColor: theme.colors.primaryPrivate,
+    backgroundColor: PaletteColori.privato.primary,
   },
   clockItemText: {
     fontSize: 16,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
   },
   clockItemTextSelected: {
     color: "#FFFFFF",
@@ -251,12 +250,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   buttonTextCancel: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     fontWeight: "bold",
     fontSize: 14,
   },
   buttonTextConfirm: {
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.privato.primary,
     fontWeight: "bold",
     fontSize: 14,
   },

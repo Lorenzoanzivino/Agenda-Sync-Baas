@@ -7,7 +7,8 @@ import {
   TouchableOpacity,
   ScrollView,
 } from "react-native";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -32,13 +33,12 @@ export default function DayDetailsModal({
       })
     : "";
 
-  // Calcolo compleanno sulla data selezionata (date è in formato YYYY-MM-DD)
   let isBirthday = false;
   if (date && userData?.birthDate) {
-    const dayMonthToCheck = date.substring(5); // Estrae "MM-DD"
+    const dayMonthToCheck = date.substring(5);
     const parts = userData.birthDate.split("-");
     if (parts.length === 3) {
-      const birthDayMonth = `${parts[1]}-${parts[0]}`; // Da "DD-MM-YYYY" a "MM-DD"
+      const birthDayMonth = `${parts[1]}-${parts[0]}`;
       if (dayMonthToCheck === birthDayMonth) {
         isBirthday = true;
       }
@@ -55,14 +55,12 @@ export default function DayDetailsModal({
             >
               <Text style={styles.title}>{formattedDate}</Text>
 
-              {/* Pulsante per aggiungere un nuovo task singolo in questa data */}
               {onAddTask ? (
                 <TouchableOpacity onPress={onAddTask} style={styles.addButton}>
                   <Ionicons name="add" size={22} color="#FFF" />
                 </TouchableOpacity>
               ) : null}
 
-              {/* Pulsante Reset */}
               {tasks && tasks.length > 0 && onResetDay ? (
                 <TouchableOpacity
                   onPress={onResetDay}
@@ -71,7 +69,7 @@ export default function DayDetailsModal({
                   <Ionicons
                     name="reload-outline"
                     size={22}
-                    color={theme.colors.error}
+                    color={PaletteColori.privato.error}
                   />
                 </TouchableOpacity>
               ) : null}
@@ -80,22 +78,23 @@ export default function DayDetailsModal({
               <Ionicons
                 name="close-circle"
                 size={28}
-                color={theme.colors.textSecondary}
+                color={PaletteColori.privato.textSecondary}
               />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.scrollArea}>
-            {/* Card del compleanno se la data combacia */}
             {isBirthday ? (
               <View style={[styles.taskCard, styles.birthdayCard]}>
                 <View style={styles.birthdayIconBox}>
                   <Text style={{ fontSize: 28 }}>🎂</Text>
                 </View>
                 <View style={styles.taskContent}>
-                  <Text style={styles.birthdayTitle}>Tanti Auguri!</Text>
+                  <Text style={styles.birthdayTitle}>
+                    {Testi.privato.compleannoTitolo}
+                  </Text>
                   <Text style={styles.birthdayText}>
-                    Oggi è il tuo compleanno! Goditi questa giornata.
+                    {Testi.privato.compleannoTesto}
                   </Text>
                 </View>
               </View>
@@ -126,7 +125,7 @@ export default function DayDetailsModal({
 
                     <Text style={styles.taskTime}>
                       {task.isAllDay
-                        ? "Tutto il giorno"
+                        ? Testi.modali.tuttoIlGiorno
                         : `${task.startTime} - ${task.endTime}`}
                     </Text>
 
@@ -150,7 +149,7 @@ export default function DayDetailsModal({
                         <Ionicons
                           name="link"
                           size={22}
-                          color={theme.colors.primaryPrivate}
+                          color={PaletteColori.privato.primary}
                         />
                       </TouchableOpacity>
                     ) : null}
@@ -162,7 +161,7 @@ export default function DayDetailsModal({
                       <Ionicons
                         name="pencil-outline"
                         size={22}
-                        color={theme.colors.primaryPrivate}
+                        color={PaletteColori.privato.primary}
                       />
                     </TouchableOpacity>
 
@@ -173,7 +172,7 @@ export default function DayDetailsModal({
                       <Ionicons
                         name="trash-outline"
                         size={22}
-                        color={theme.colors.error}
+                        color={PaletteColori.privato.error}
                       />
                     </TouchableOpacity>
                   </View>
@@ -182,7 +181,7 @@ export default function DayDetailsModal({
             ) : !isBirthday ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
-                  Nessun evento in questa data.
+                  {Testi.modali.nessunEventoData}
                 </Text>
               </View>
             ) : null}
@@ -200,10 +199,10 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: theme.colors.cardBackground,
+    backgroundColor: PaletteColori.privato.cardBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
     minHeight: "50%",
     maxHeight: "85%",
   },
@@ -211,17 +210,17 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.l,
+    marginBottom: PaletteColori.spacing.l,
   },
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    color: theme.colors.primaryPrivate,
+    color: PaletteColori.privato.primary,
     textTransform: "capitalize",
   },
   addButton: {
     padding: 6,
-    backgroundColor: theme.colors.primaryPrivate,
+    backgroundColor: PaletteColori.privato.primary,
     borderRadius: 12,
   },
   resetButton: {
@@ -235,34 +234,34 @@ const styles = StyleSheet.create({
   taskCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.privato.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
   },
   birthdayCard: {
-    backgroundColor: "#FFF0F5",
+    backgroundColor: PaletteColori.privato.birthdayBackground,
     borderWidth: 2,
-    borderColor: "#FF69B4",
+    borderColor: PaletteColori.privato.birthdayBadge,
   },
   birthdayIconBox: {
-    marginRight: theme.spacing.m,
+    marginRight: PaletteColori.spacing.m,
   },
   birthdayTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: "#FF1493",
+    color: PaletteColori.privato.birthdayBadge,
   },
   birthdayText: {
     fontSize: 14,
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     marginTop: 2,
   },
   colorIndicator: {
     width: 12,
     height: 12,
     borderRadius: 6,
-    marginRight: theme.spacing.m,
+    marginRight: PaletteColori.spacing.m,
   },
   taskContent: {
     flex: 1,
@@ -271,38 +270,38 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
   },
   taskTitleCompleted: {
     textDecorationLine: "line-through",
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
   },
   taskTime: {
     fontSize: 12,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     marginTop: 2,
   },
   taskDescription: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     marginTop: 4,
     fontStyle: "italic",
   },
   actionsColumn: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: theme.spacing.s,
+    marginLeft: PaletteColori.spacing.s,
   },
   actionButton: {
     padding: 6,
     marginLeft: 4,
   },
   emptyContainer: {
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
     alignItems: "center",
   },
   emptyText: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.privato.textSecondary,
     fontStyle: "italic",
   },
 });

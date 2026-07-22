@@ -20,7 +20,8 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 import { useAuthStore } from "../store/useAuthStore";
 import TimePickerModal from "./TimePickerModal";
 import { inviaNotificaIscritti } from "../utils/notificheUtils";
@@ -49,10 +50,8 @@ export default function ModaleTaskCondiviso({
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState("start");
 
-  // Nome Utente (es. mariorossi@gmail.com -> mariorossi)
   const nomeUtente = user?.email?.split("@")[0] || "Un membro";
 
-  // Caricamento dei task fissi personali per compilarli nel modale condiviso
   useEffect(() => {
     if (!user || !visible || taskToEdit) return;
     const fetchFixed = async () => {
@@ -114,7 +113,7 @@ export default function ModaleTaskCondiviso({
         parseInt(endTime.split(":")[0]) * 60 + parseInt(endTime.split(":")[1]);
 
       if (startTotal > endTotal) {
-        setErrorMsg("La data di inizio non può superare la fine");
+        setErrorMsg(Testi.modali.erroreInizioFine);
         return;
       }
     }
@@ -197,7 +196,9 @@ export default function ModaleTaskCondiviso({
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>
-            {taskToEdit ? "Modifica Task Condiviso" : "Nuovo Task Condiviso"}
+            {taskToEdit
+              ? Testi.modali.modificaTaskCondiviso
+              : Testi.modali.nuovoTaskCondiviso}
           </Text>
 
           {errorMsg !== "" ? (
@@ -209,7 +210,7 @@ export default function ModaleTaskCondiviso({
           <ScrollView style={styles.scrollArea}>
             {!taskToEdit && fixedTasksList.length > 0 ? (
               <View style={styles.templatePickerBox}>
-                <Text style={styles.label}>Importa da Evento Fisso:</Text>
+                <Text style={styles.label}>{Testi.modali.importaFisso}</Text>
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -233,19 +234,19 @@ export default function ModaleTaskCondiviso({
 
             <TextInput
               style={styles.input}
-              placeholder="Titolo *"
+              placeholder={Testi.modali.titoloPlaceholder}
               value={title}
               onChangeText={setTitle}
             />
 
             <View style={styles.switchRow}>
-              <Text style={styles.label}>Tutto il giorno</Text>
+              <Text style={styles.label}>{Testi.modali.tuttoIlGiorno}</Text>
               <Switch
                 value={isAllDay}
                 onValueChange={setIsAllDay}
                 trackColor={{
-                  false: theme.colors.textSecondary,
-                  true: theme.colors.primaryShared,
+                  false: PaletteColori.condiviso.textSecondary,
+                  true: PaletteColori.condiviso.primary,
                 }}
               />
             </View>
@@ -253,7 +254,7 @@ export default function ModaleTaskCondiviso({
             {!isAllDay ? (
               <View style={styles.dateRow}>
                 <View style={styles.dateInputContainer}>
-                  <Text style={styles.label}>Ora Inizio</Text>
+                  <Text style={styles.label}>{Testi.modali.oraInizio}</Text>
                   <TouchableOpacity
                     style={styles.timeBox}
                     onPress={() => openTimePicker("start")}
@@ -262,7 +263,7 @@ export default function ModaleTaskCondiviso({
                   </TouchableOpacity>
                 </View>
                 <View style={styles.dateInputContainer}>
-                  <Text style={styles.label}>Ora Fine</Text>
+                  <Text style={styles.label}>{Testi.modali.oraFine}</Text>
                   <TouchableOpacity
                     style={styles.timeBox}
                     onPress={() => openTimePicker("end")}
@@ -273,27 +274,27 @@ export default function ModaleTaskCondiviso({
               </View>
             ) : null}
 
-            <Text style={styles.label}>Descrizione (Opzionale)</Text>
+            <Text style={styles.label}>{Testi.modali.descrizioneOptional}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Aggiungi dettagli..."
+              placeholder={Testi.modali.descrizionePlaceholder}
               value={description}
               onChangeText={setDescription}
               multiline={true}
               numberOfLines={3}
             />
 
-            <Text style={styles.label}>URL (Opzionale)</Text>
+            <Text style={styles.label}>{Testi.modali.urlOptional}</Text>
             <TextInput
               style={styles.input}
-              placeholder="https://..."
+              placeholder={Testi.modali.urlPlaceholder}
               value={url}
               onChangeText={setUrl}
               keyboardType="url"
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>Colore</Text>
+            <Text style={styles.label}>{Testi.modali.colore}</Text>
             <View style={styles.colorContainer}>{renderColorOptions()}</View>
           </ScrollView>
 
@@ -303,7 +304,9 @@ export default function ModaleTaskCondiviso({
               onPress={onClose}
               disabled={loading}
             >
-              <Text style={styles.cancelButtonText}>Annulla</Text>
+              <Text style={styles.cancelButtonText}>
+                {Testi.modali.btnAnnulla}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -317,7 +320,9 @@ export default function ModaleTaskCondiviso({
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.saveButtonText}>Salva</Text>
+                <Text style={styles.saveButtonText}>
+                  {Testi.modali.btnSalva}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -339,38 +344,38 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
   },
   modalCard: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.l,
-    borderRadius: theme.borderRadius.card,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    padding: PaletteColori.spacing.l,
+    borderRadius: PaletteColori.borderRadius.card,
     maxHeight: "85%",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
     textAlign: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorBanner: {
     backgroundColor: "#FFE5E5",
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
-    marginBottom: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorText: {
-    color: theme.colors.error,
+    color: PaletteColori.condiviso.error,
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 14,
   },
   templatePickerBox: {
-    marginBottom: theme.spacing.m,
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.s,
-    borderRadius: theme.borderRadius.input,
+    marginBottom: PaletteColori.spacing.m,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.s,
+    borderRadius: PaletteColori.borderRadius.input,
   },
   templateChipsRow: {
     flexDirection: "row",
@@ -379,7 +384,7 @@ const styles = StyleSheet.create({
   templateChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.cardBackground,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 16,
@@ -395,68 +400,78 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: "600",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
   },
-  scrollArea: { marginBottom: theme.spacing.m },
+  scrollArea: { marginBottom: PaletteColori.spacing.m },
   input: {
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
     fontSize: 16,
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   textArea: { minHeight: 80, textAlignVertical: "top" },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   dateRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: theme.spacing.m,
-    marginBottom: theme.spacing.m,
+    gap: PaletteColori.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   dateInputContainer: { flex: 1 },
   timeBox: {
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
     alignItems: "center",
   },
-  timeText: { fontSize: 18, fontWeight: "bold", color: theme.colors.textMain },
+  timeText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: PaletteColori.condiviso.textMain,
+  },
   label: {
     fontSize: 14,
     fontWeight: "bold",
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.s,
+    color: PaletteColori.condiviso.textSecondary,
+    marginBottom: PaletteColori.spacing.s,
   },
   colorContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.s,
-    marginBottom: theme.spacing.m,
+    paddingHorizontal: PaletteColori.spacing.s,
+    marginBottom: PaletteColori.spacing.m,
   },
   colorCircle: { width: 32, height: 32, borderRadius: 16 },
-  selectedColor: { borderWidth: 3, borderColor: theme.colors.textMain },
+  selectedColor: {
+    borderWidth: 3,
+    borderColor: PaletteColori.condiviso.textMain,
+  },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: theme.spacing.m,
+    paddingTop: PaletteColori.spacing.m,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.sharedBackground,
+    borderTopColor: PaletteColori.condiviso.background,
   },
   cancelButton: {
-    padding: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
     flex: 1,
     alignItems: "center",
   },
-  cancelButtonText: { color: theme.colors.textSecondary, fontWeight: "bold" },
+  cancelButtonText: {
+    color: PaletteColori.condiviso.textSecondary,
+    fontWeight: "bold",
+  },
   saveButton: {
-    backgroundColor: theme.colors.primaryShared,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
+    backgroundColor: PaletteColori.condiviso.primary,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.button,
     flex: 1,
     alignItems: "center",
   },
