@@ -7,19 +7,21 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Modal,
 } from "react-native";
 import {
   collection,
   addDoc,
   doc,
   getDoc,
+  getDocs, // <- IL BUG ERA QUI! Mancava l'import!
   updateDoc,
   arrayUnion,
   arrayRemove,
   query,
   where,
   onSnapshot,
+  deleteDoc,
+  writeBatch,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { theme } from "../constants/theme";
@@ -37,8 +39,6 @@ export default function SchermataGestioneCondivisa() {
   const [otpInput, setOtpInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-
-  const [isInfoModalVisible, setIsInfoModalVisible] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -132,14 +132,49 @@ export default function SchermataGestioneCondivisa() {
     }
   };
 
-  const handleLeaveCalendar = async () => {
-    if (!activeSharedCalendarId) return;
-    if (window.confirm("Vuoi uscire da questo calendario condiviso?")) {
-      try {
-        const calRef = doc(db, "shared_calendars", activeSharedCalendarId);
-        await updateDoc(calRef, { members: arrayRemove(user.uid) });
-        setIsInfoModalVisible(false);
-      } catch (error) {}
+  const handleLeaveOrDeleteCalendar = async () => {
+    if (!activeSharedCalendarId || !activeCalendarData) return;
+
+    const isOwner = activeCalendarData.ownerId === user.uid;
+
+    if (isOwner) {
+      if (
+        window.confirm(
+          "Sei il proprietario di questo calendario. Vuoi ELIMINARE definitivamente il calendario e tutti i suoi task per tutti i membri?",
+        )
+      ) {
+        try {
+          // Elimina tutti i task collegati al calendario
+          const qTasks = query(
+            collection(db, "shared_tasks"),
+            where("calendarId", "==", activeSharedCalendarId),
+          );
+          const snapTasks = await getDocs(qTasks);
+          const batch = writeBatch(db);
+          snapTasks.forEach((t) => batch.delete(doc(db, "shared_tasks", t.id)));
+          await batch.commit();
+
+          // Elimina il calendario stesso
+          await deleteDoc(doc(db, "shared_calendars", activeSharedCalendarId));
+        } catch (error) {
+          console.error("Errore eliminazione calendario:", error);
+          setErrorMsg("Errore durante l'eliminazione.");
+        }
+      }
+    } else {
+      if (
+        window.confirm(
+          "Vuoi USCIRE da questo calendario condiviso? Non vedrai più i suoi eventi.",
+        )
+      ) {
+        try {
+          const calRef = doc(db, "shared_calendars", activeSharedCalendarId);
+          await updateDoc(calRef, { members: arrayRemove(user.uid) });
+        } catch (error) {
+          console.error("Errore uscita calendario:", error);
+          setErrorMsg("Errore durante l'uscita dal calendario.");
+        }
+      }
     }
   };
 
@@ -158,18 +193,6 @@ export default function SchermataGestioneCondivisa() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Gestione</Text>
-        {activeCalendarData ? (
-          <TouchableOpacity
-            onPress={() => setIsInfoModalVisible(true)}
-            style={styles.infoButton}
-          >
-            <Ionicons
-              name="information-circle-outline"
-              size={28}
-              color={theme.colors.primaryShared}
-            />
-          </TouchableOpacity>
-        ) : null}
       </View>
 
       {errorMsg !== "" ? (
@@ -213,12 +236,27 @@ export default function SchermataGestioneCondivisa() {
 
         {activeCalendarData ? (
           <View style={styles.activeCard}>
-            <Text style={styles.activeCardTitle}>
-              {activeCalendarData.name}
-            </Text>
-            <Text style={styles.activeCardSub}>
-              Membri collegati: {activeCalendarData.members?.length || 1}
-            </Text>
+            <View style={styles.activeCardHeader}>
+              <View>
+                <Text style={styles.activeCardTitle}>
+                  {activeCalendarData.name}
+                </Text>
+                <Text style={styles.activeCardSub}>
+                  Membri: {activeCalendarData.members?.length || 1}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleLeaveOrDeleteCalendar}
+                style={styles.deleteButton}
+              >
+                <Ionicons
+                  name="trash-outline"
+                  size={24}
+                  color={theme.colors.error}
+                />
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity
               style={styles.otpBox}
               onPress={copyOtpToClipboard}
@@ -287,48 +325,6 @@ export default function SchermataGestioneCondivisa() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-
-      <Modal
-        visible={isInfoModalVisible}
-        transparent={true}
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>Info Calendario</Text>
-            {activeCalendarData ? (
-              <>
-                <Text style={styles.modalText}>
-                  <Text style={{ fontWeight: "bold" }}>Nome:</Text>{" "}
-                  {activeCalendarData.name}
-                </Text>
-                <Text style={styles.modalText}>
-                  <Text style={{ fontWeight: "bold" }}>OTP:</Text>{" "}
-                  {activeSharedCalendarId}
-                </Text>
-                <Text style={styles.modalText}>
-                  <Text style={{ fontWeight: "bold" }}>Membri:</Text>{" "}
-                  {activeCalendarData.members?.length || 1}
-                </Text>
-              </>
-            ) : null}
-            <View style={styles.modalButtonRow}>
-              <TouchableOpacity
-                style={styles.leaveButton}
-                onPress={handleLeaveCalendar}
-              >
-                <Text style={styles.leaveButtonText}>Esci</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.closeModalButton}
-                onPress={() => setIsInfoModalVisible(false)}
-              >
-                <Text style={styles.closeModalButtonText}>Chiudi</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -351,7 +347,6 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: theme.colors.primaryShared,
   },
-  infoButton: { padding: 4 },
   errorBanner: {
     backgroundColor: "#FFE5E5",
     padding: theme.spacing.m,
@@ -393,6 +388,16 @@ const styles = StyleSheet.create({
     borderRadius: theme.borderRadius.card,
     padding: theme.spacing.l,
     marginBottom: theme.spacing.m,
+  },
+  activeCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  deleteButton: {
+    padding: 8,
+    backgroundColor: "#FFE5E5",
+    borderRadius: 12,
   },
   activeCardTitle: {
     fontSize: 22,
@@ -476,45 +481,4 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     fontSize: 16,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "center",
-    padding: theme.spacing.l,
-  },
-  modalCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.l,
-    gap: theme.spacing.m,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: theme.colors.textMain,
-    textAlign: "center",
-  },
-  modalText: { fontSize: 16, color: theme.colors.textMain },
-  modalButtonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginTop: theme.spacing.m,
-    gap: theme.spacing.m,
-  },
-  leaveButton: {
-    backgroundColor: "#FFE5E5",
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
-    flex: 1,
-    alignItems: "center",
-  },
-  leaveButtonText: { color: theme.colors.error, fontWeight: "bold" },
-  closeModalButton: {
-    backgroundColor: theme.colors.sharedBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
-    flex: 1,
-    alignItems: "center",
-  },
-  closeModalButtonText: { color: theme.colors.textMain, fontWeight: "bold" },
 });

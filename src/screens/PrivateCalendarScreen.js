@@ -20,7 +20,7 @@ import {
   getDocs,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 import { theme } from "../constants/theme";
 import { useAuthStore } from "../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
@@ -91,16 +91,14 @@ export default function PrivateCalendarScreen() {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
 
-  // Calcolo Mese-Giorno del compleanno per confrontarlo nel calendario
   let birthDayMonth = null;
   if (userData?.birthDate) {
     const parts = userData.birthDate.split("-");
     if (parts.length === 3) {
-      birthDayMonth = `${parts[1]}-${parts[0]}`; // Da "DD-MM-YYYY" a "MM-DD"
+      birthDayMonth = `${parts[1]}-${parts[0]}`;
     }
   }
 
-  // 1. Fetch dei Task Fissi (Template)
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -117,7 +115,6 @@ export default function PrivateCalendarScreen() {
     return () => unsubscribe();
   }, [user]);
 
-  // 2. Fetch di TUTTI i task privati dell'utente
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -134,7 +131,6 @@ export default function PrivateCalendarScreen() {
     return () => unsubscribe();
   }, [user]);
 
-  // 3. Fetch dei task per il giorno selezionato (DayDetailsModal)
   useEffect(() => {
     if (!user || !selectedDayDate) return;
     const q = query(
@@ -431,19 +427,28 @@ export default function PrivateCalendarScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.calendarHeaderRow}>
-        <Text style={styles.title}>Calendario</Text>
-        {allPrivateTasks.length > 0 ? (
-          <TouchableOpacity
-            onPress={resetAllCalendarTasks}
-            style={styles.resetButton}
-          >
-            <Ionicons
-              name="reload-outline"
-              size={22}
-              color={theme.colors.error}
-            />
-          </TouchableOpacity>
-        ) : null}
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <Text style={styles.title}>Calendario</Text>
+          {allPrivateTasks.length > 0 ? (
+            <TouchableOpacity
+              onPress={resetAllCalendarTasks}
+              style={styles.resetButton}
+            >
+              <Ionicons
+                name="reload-outline"
+                size={22}
+                color={theme.colors.error}
+              />
+            </TouchableOpacity>
+          ) : null}
+        </View>
+        <TouchableOpacity onPress={() => auth.signOut()}>
+          <Ionicons
+            name="log-out-outline"
+            size={28}
+            color={theme.colors.error}
+          />
+        </TouchableOpacity>
       </View>
 
       {errorBanner !== "" ? (
@@ -462,7 +467,6 @@ export default function PrivateCalendarScreen() {
             const isSelected = selectedDates[date.dateString]?.selected;
             const isToday = date.dateString === todayISO;
 
-            // Verifica se il giorno renderizzato corrisponde al compleanno
             const isBirthday =
               birthDayMonth && date.dateString.substring(5) === birthDayMonth;
 
@@ -476,7 +480,6 @@ export default function PrivateCalendarScreen() {
                   isSelected && styles.calendarDayCellSelected,
                 ]}
               >
-                {/* Se è il compleanno mostra la piccola torta in alto a sinistra */}
                 {isBirthday ? (
                   <View style={styles.birthdayBadge}>
                     <Text style={styles.birthdayBadgeText}>🎂</Text>
@@ -666,7 +669,7 @@ const styles = StyleSheet.create({
   },
   calendarDayCellBirthday: {
     borderWidth: 2,
-    borderColor: "#FF69B4", // Rosa scuro per il compleanno
+    borderColor: "#FF69B4",
   },
   calendarDayTextToday: {
     color: theme.colors.primaryPrivate,
