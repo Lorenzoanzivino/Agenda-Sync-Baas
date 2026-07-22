@@ -15,11 +15,16 @@ import MainNavigator from "./src/navigation/MainNavigator";
 const Stack = createStackNavigator();
 
 export default function App() {
-  const { user, isLoading, setUser, setLoading } = useAuthStore();
+  const { user, isLoading, setUser, setLoading, fetchUserData } =
+    useAuthStore();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        // Scarica i dati aggiuntivi dell'utente (es. birthDate) dal database
+        await fetchUserData(currentUser.uid);
+      }
       setLoading(false);
     });
     return unsubscribe;

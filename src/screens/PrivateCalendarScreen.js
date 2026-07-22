@@ -73,7 +73,7 @@ LocaleConfig.locales["it"] = {
 LocaleConfig.defaultLocale = "it";
 
 export default function PrivateCalendarScreen() {
-  const { user } = useAuthStore();
+  const { user, userData } = useAuthStore();
   const todayISO = new Date().toISOString().split("T")[0];
 
   const [fixedTasks, setFixedTasks] = useState([]);
@@ -90,6 +90,15 @@ export default function PrivateCalendarScreen() {
   const [dayTasks, setDayTasks] = useState([]);
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
+
+  // Calcolo Mese-Giorno del compleanno per confrontarlo nel calendario
+  let birthDayMonth = null;
+  if (userData?.birthDate) {
+    const parts = userData.birthDate.split("-");
+    if (parts.length === 3) {
+      birthDayMonth = `${parts[1]}-${parts[0]}`; // Da "DD-MM-YYYY" a "MM-DD"
+    }
+  }
 
   // 1. Fetch dei Task Fissi (Template)
   useEffect(() => {
@@ -452,15 +461,28 @@ export default function PrivateCalendarScreen() {
             const count = getTaskCountForDate(date.dateString);
             const isSelected = selectedDates[date.dateString]?.selected;
             const isToday = date.dateString === todayISO;
+
+            // Verifica se il giorno renderizzato corrisponde al compleanno
+            const isBirthday =
+              birthDayMonth && date.dateString.substring(5) === birthDayMonth;
+
             return (
               <TouchableOpacity
                 onPress={() => onDayPress(date)}
                 style={[
                   styles.calendarDayCell,
                   isToday && styles.calendarDayCellToday,
+                  isBirthday && styles.calendarDayCellBirthday,
                   isSelected && styles.calendarDayCellSelected,
                 ]}
               >
+                {/* Se è il compleanno mostra la piccola torta in alto a sinistra */}
+                {isBirthday ? (
+                  <View style={styles.birthdayBadge}>
+                    <Text style={styles.birthdayBadgeText}>🎂</Text>
+                  </View>
+                ) : null}
+
                 <Text
                   style={[
                     styles.calendarDayText,
@@ -471,6 +493,7 @@ export default function PrivateCalendarScreen() {
                 >
                   {date.day}
                 </Text>
+
                 {count > 0 ? (
                   <View style={styles.badgeContainer}>
                     <Text style={styles.badgeText}>{count}</Text>
@@ -641,6 +664,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.primaryPrivate,
   },
+  calendarDayCellBirthday: {
+    borderWidth: 2,
+    borderColor: "#FF69B4", // Rosa scuro per il compleanno
+  },
   calendarDayTextToday: {
     color: theme.colors.primaryPrivate,
     fontWeight: "bold",
@@ -660,6 +687,15 @@ const styles = StyleSheet.create({
   disabledText: {
     color: theme.colors.textSecondary,
     opacity: 0.4,
+  },
+  birthdayBadge: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    zIndex: 1,
+  },
+  birthdayBadgeText: {
+    fontSize: 11,
   },
   badgeContainer: {
     position: "absolute",

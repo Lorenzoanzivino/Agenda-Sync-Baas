@@ -26,21 +26,29 @@ export default function RegisterScreen({ navigation }) {
       setError("Compila tutti i campi");
       return;
     }
+
+    // Validazione rigorosa formato data DD-MM-YYYY
+    const dateRegex = /^(0[1-9]|[12][0-9]|3[01])-(0[1-9]|1[012])-\d{4}$/;
+    if (!dateRegex.test(birthDate.trim())) {
+      setError("Formato data non valido. Usa DD-MM-YYYY (es. 09-09-1997)");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
       const userCredential = await createUserWithEmailAndPassword(
         auth,
-        email,
+        email.trim(),
         password,
       );
       const user = userCredential.user;
 
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
-        username: username,
-        email: email,
-        birthDate: birthDate,
+        username: username.trim(),
+        email: email.trim(),
+        birthDate: birthDate.trim(),
         createdAt: new Date().toISOString(),
       });
     } catch (err) {

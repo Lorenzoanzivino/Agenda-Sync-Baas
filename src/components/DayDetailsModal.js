@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { theme } from "../constants/theme";
 import { Ionicons } from "@expo/vector-icons";
+import { useAuthStore } from "../store/useAuthStore";
 
 export default function DayDetailsModal({
   visible,
@@ -21,6 +22,8 @@ export default function DayDetailsModal({
   onResetDay,
   onAddTask,
 }) {
+  const { userData } = useAuthStore();
+
   const formattedDate = date
     ? new Date(date).toLocaleDateString("it-IT", {
         weekday: "long",
@@ -29,14 +32,29 @@ export default function DayDetailsModal({
       })
     : "";
 
+  // Calcolo compleanno sulla data selezionata (date è in formato YYYY-MM-DD)
+  let isBirthday = false;
+  if (date && userData?.birthDate) {
+    const dayMonthToCheck = date.substring(5); // Estrae "MM-DD"
+    const parts = userData.birthDate.split("-");
+    if (parts.length === 3) {
+      const birthDayMonth = `${parts[1]}-${parts[0]}`; // Da "DD-MM-YYYY" a "MM-DD"
+      if (dayMonthToCheck === birthDayMonth) {
+        isBirthday = true;
+      }
+    }
+  }
+
   return (
     <Modal visible={visible} transparent={true} animationType="slide">
       <View style={styles.overlay}>
         <View style={styles.card}>
           <View style={styles.header}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 12 }}
+            >
               <Text style={styles.title}>{formattedDate}</Text>
-              
+
               {/* Pulsante per aggiungere un nuovo task singolo in questa data */}
               {onAddTask ? (
                 <TouchableOpacity onPress={onAddTask} style={styles.addButton}>
@@ -46,8 +64,15 @@ export default function DayDetailsModal({
 
               {/* Pulsante Reset */}
               {tasks && tasks.length > 0 && onResetDay ? (
-                <TouchableOpacity onPress={onResetDay} style={styles.resetButton}>
-                  <Ionicons name="reload-outline" size={22} color={theme.colors.error} />
+                <TouchableOpacity
+                  onPress={onResetDay}
+                  style={styles.resetButton}
+                >
+                  <Ionicons
+                    name="reload-outline"
+                    size={22}
+                    color={theme.colors.error}
+                  />
                 </TouchableOpacity>
               ) : null}
             </View>
@@ -61,6 +86,21 @@ export default function DayDetailsModal({
           </View>
 
           <ScrollView style={styles.scrollArea}>
+            {/* Card del compleanno se la data combacia */}
+            {isBirthday ? (
+              <View style={[styles.taskCard, styles.birthdayCard]}>
+                <View style={styles.birthdayIconBox}>
+                  <Text style={{ fontSize: 28 }}>🎂</Text>
+                </View>
+                <View style={styles.taskContent}>
+                  <Text style={styles.birthdayTitle}>Tanti Auguri!</Text>
+                  <Text style={styles.birthdayText}>
+                    Oggi è il tuo compleanno! Goditi questa giornata.
+                  </Text>
+                </View>
+              </View>
+            ) : null}
+
             {tasks && tasks.length > 0 ? (
               tasks.map((task) => (
                 <View key={task.id} style={styles.taskCard}>
@@ -139,13 +179,13 @@ export default function DayDetailsModal({
                   </View>
                 </View>
               ))
-            ) : (
+            ) : !isBirthday ? (
               <View style={styles.emptyContainer}>
                 <Text style={styles.emptyText}>
                   Nessun evento in questa data.
                 </Text>
               </View>
-            )}
+            ) : null}
           </ScrollView>
         </View>
       </View>
@@ -199,6 +239,24 @@ const styles = StyleSheet.create({
     padding: theme.spacing.m,
     borderRadius: theme.borderRadius.card,
     marginBottom: theme.spacing.s,
+  },
+  birthdayCard: {
+    backgroundColor: "#FFF0F5",
+    borderWidth: 2,
+    borderColor: "#FF69B4",
+  },
+  birthdayIconBox: {
+    marginRight: theme.spacing.m,
+  },
+  birthdayTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FF1493",
+  },
+  birthdayText: {
+    fontSize: 14,
+    color: theme.colors.textMain,
+    marginTop: 2,
   },
   colorIndicator: {
     width: 12,
