@@ -21,7 +21,7 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 import { theme } from "../constants/theme";
 import { useAuthStore } from "../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
@@ -103,17 +103,14 @@ export default function SchermataCalendarioCondiviso() {
   const nomeUtente = user?.email?.split("@")[0] || "Un membro";
   const todayISO = new Date().toISOString().split("T")[0];
 
-  // Gestione Navigazione dalla Notifica In-App
   useEffect(() => {
     if (route.params?.selectedDateToOpen) {
       setSelectedDayDate(route.params.selectedDateToOpen);
       setIsDayModalVisible(true);
-      // Puliamo il parametro per non far riaprire la modale al re-render
       navigation.setParams({ selectedDateToOpen: undefined });
     }
   }, [route.params?.selectedDateToOpen]);
 
-  // AUTO-SELEZIONE DEL CALENDARIO (Se atterri qui direttamente)
   useEffect(() => {
     if (!user || activeSharedCalendarId) return;
     const fetchFirstCalendar = async () => {
@@ -400,7 +397,16 @@ export default function SchermataCalendarioCondiviso() {
   if (!activeSharedCalendarId) {
     return (
       <View style={styles.container}>
-        <Text style={styles.title}>Calendario</Text>
+        <View style={styles.calendarHeaderRow}>
+          <Text style={styles.title}>Calendario</Text>
+          <TouchableOpacity onPress={() => auth.signOut()}>
+            <Ionicons
+              name="log-out-outline"
+              size={28}
+              color={theme.colors.error}
+            />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.emptyText}>
           Nessun calendario collegato. Vai nella sezione Gestione.
         </Text>
@@ -516,6 +522,14 @@ export default function SchermataCalendarioCondiviso() {
               />
             </TouchableOpacity>
           ) : null}
+
+          <TouchableOpacity onPress={() => auth.signOut()}>
+            <Ionicons
+              name="log-out-outline"
+              size={28}
+              color={theme.colors.error}
+            />
+          </TouchableOpacity>
         </View>
       </View>
 

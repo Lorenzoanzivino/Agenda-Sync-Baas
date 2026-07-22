@@ -19,7 +19,7 @@ import {
   deleteDoc,
   writeBatch,
 } from "firebase/firestore";
-import { db } from "../config/firebase";
+import { auth, db } from "../config/firebase";
 import { theme } from "../constants/theme";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useAuthStore";
@@ -47,7 +47,6 @@ export default function SchermataOggiCondivisa() {
 
   const nomeUtente = user?.email?.split("@")[0] || "Un membro";
 
-  // AUTO-SELEZIONE DEL CALENDARIO: se apro l'app ed è vuoto, pesco il primo disponibile
   useEffect(() => {
     if (!user || activeSharedCalendarId) return;
     const fetchFirstCalendar = async () => {
@@ -63,7 +62,6 @@ export default function SchermataOggiCondivisa() {
     fetchFirstCalendar();
   }, [user, activeSharedCalendarId]);
 
-  // Fetch del nome del calendario attivo
   useEffect(() => {
     if (!activeSharedCalendarId) return;
     const unsubscribeCal = onSnapshot(
@@ -77,7 +75,6 @@ export default function SchermataOggiCondivisa() {
     return () => unsubscribeCal();
   }, [activeSharedCalendarId]);
 
-  // Fetch dei task del calendario attivo
   useEffect(() => {
     if (!activeSharedCalendarId) return;
 
@@ -176,6 +173,13 @@ export default function SchermataOggiCondivisa() {
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>Oggi</Text>
+          <TouchableOpacity onPress={() => auth.signOut()}>
+            <Ionicons
+              name="log-out-outline"
+              size={28}
+              color={theme.colors.error}
+            />
+          </TouchableOpacity>
         </View>
         <View style={styles.emptyCard}>
           <Text style={styles.emptyText}>
@@ -208,11 +212,20 @@ export default function SchermataOggiCondivisa() {
           <Text style={styles.headerSubtitle}>Calendario: {calendarName}</Text>
         </View>
 
-        <CampanellaNotifiche
-          onNavigateToDate={(date) => {
-            navigation.navigate("Calendario", { selectedDateToOpen: date });
-          }}
-        />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+          <CampanellaNotifiche
+            onNavigateToDate={(date) => {
+              navigation.navigate("Calendario", { selectedDateToOpen: date });
+            }}
+          />
+          <TouchableOpacity onPress={() => auth.signOut()}>
+            <Ionicons
+              name="log-out-outline"
+              size={28}
+              color={theme.colors.error}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
