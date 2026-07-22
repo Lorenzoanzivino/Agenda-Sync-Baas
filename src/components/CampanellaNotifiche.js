@@ -18,7 +18,8 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useAuthStore";
 
@@ -41,7 +42,6 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
       snapshot.forEach((document) => {
         dati.push({ id: document.id, ...document.data() });
       });
-      // Ordina per data di creazione decrescente (più recenti in alto)
       dati.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       setNotifiche(dati);
     });
@@ -70,7 +70,7 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
   const handleSvuotaTutte = async () => {
     if (notifiche.length === 0) return;
     if (
-      window.confirm("Vuoi eliminare tutte le notifiche di questo calendario?")
+      window.confirm("Vuoi eliminare tutte le notifiche di questo calendario?") // Potresti aggiungere in Testi.js se lo desideri
     ) {
       const batch = writeBatch(db);
       notifiche.forEach((n) => {
@@ -86,7 +86,7 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
         <Ionicons
           name="notifications-outline"
           size={28}
-          color={theme.colors.textMain}
+          color={PaletteColori.condiviso.textMain}
         />
         {notificheNonLette > 0 ? (
           <View style={styles.badge}>
@@ -106,7 +106,7 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
                 <Ionicons
                   name="close-circle"
                   size={28}
-                  color={theme.colors.textSecondary}
+                  color={PaletteColori.condiviso.textSecondary}
                 />
               </TouchableOpacity>
             </View>
@@ -154,7 +154,7 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
                       <Ionicons
                         name="trash-outline"
                         size={20}
-                        color={theme.colors.error}
+                        color={PaletteColori.condiviso.error}
                       />
                     </TouchableOpacity>
                   </View>
@@ -171,14 +171,14 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
 const styles = StyleSheet.create({
   bellContainer: {
     position: "relative",
-    marginRight: theme.spacing.m,
+    marginRight: PaletteColori.spacing.m,
     justifyContent: "center",
   },
   badge: {
     position: "absolute",
     top: -4,
     right: -4,
-    backgroundColor: theme.colors.error,
+    backgroundColor: PaletteColori.condiviso.error,
     borderRadius: 10,
     minWidth: 20,
     height: 20,
@@ -186,66 +186,77 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 4,
     borderWidth: 2,
-    borderColor: theme.colors.sharedBackground,
+    borderColor: PaletteColori.condiviso.background,
   },
   badgeText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
   },
   modalCard: {
-    backgroundColor: theme.colors.cardBackground,
-    borderRadius: theme.borderRadius.card,
-    padding: theme.spacing.l,
+    backgroundColor: PaletteColori.condiviso.cardBackground,
+    borderRadius: PaletteColori.borderRadius.card,
+    padding: PaletteColori.spacing.l,
     maxHeight: "80%",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
-  title: { fontSize: 22, fontWeight: "bold", color: theme.colors.textMain },
-  clearAllButton: { alignSelf: "flex-end", marginBottom: theme.spacing.s },
-  clearAllText: { color: theme.colors.error, fontWeight: "bold", fontSize: 14 },
-  scrollArea: { marginTop: theme.spacing.s },
+  title: {
+    fontSize: 22,
+    fontWeight: "bold",
+    color: PaletteColori.condiviso.textMain,
+  },
+  clearAllButton: {
+    alignSelf: "flex-end",
+    marginBottom: PaletteColori.spacing.s,
+  },
+  clearAllText: {
+    color: PaletteColori.condiviso.error,
+    fontWeight: "bold",
+    fontSize: 14,
+  },
+  scrollArea: { marginTop: PaletteColori.spacing.s },
   emptyText: {
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     fontStyle: "italic",
     textAlign: "center",
-    marginTop: theme.spacing.m,
+    marginTop: PaletteColori.spacing.m,
   },
   notifItem: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.card,
-    marginBottom: theme.spacing.s,
+    backgroundColor: PaletteColori.condiviso.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.card,
+    marginBottom: PaletteColori.spacing.s,
   },
   notifUnread: {
     backgroundColor: "#FFE0B2",
     borderWidth: 1,
-    borderColor: theme.colors.primaryShared,
+    borderColor: PaletteColori.condiviso.primary,
   },
   notifContent: { flex: 1 },
   notifTitle: {
     fontSize: 14,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.condiviso.textMain,
     marginBottom: 2,
   },
   notifMessage: {
     fontSize: 13,
-    color: theme.colors.textSecondary,
+    color: PaletteColori.condiviso.textSecondary,
     marginBottom: 4,
   },
   notifDate: {
     fontSize: 12,
-    color: theme.colors.primaryShared,
+    color: PaletteColori.condiviso.primary,
     fontWeight: "bold",
   },
-  deleteButton: { padding: 8, marginLeft: theme.spacing.s },
+  deleteButton: { padding: 8, marginLeft: PaletteColori.spacing.s },
 });

@@ -21,7 +21,8 @@ import {
   writeBatch,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
-import { theme } from "../constants/theme";
+import { PaletteColori } from "../palette_e_testi/PaletteColori";
+import { Testi } from "../palette_e_testi/Testi";
 import { useAuthStore } from "../store/useAuthStore";
 import TimePickerModal from "./TimePickerModal";
 
@@ -74,7 +75,7 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
       const endTotal =
         parseInt(endTime.split(":")[0]) * 60 + parseInt(endTime.split(":")[1]);
       if (startTotal > endTotal) {
-        setErrorMsg("L'ora di inizio non può superare la fine");
+        setErrorMsg(Testi.modali.erroreInizioFine);
         return;
       }
     }
@@ -94,13 +95,11 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
 
     try {
       if (templateToEdit) {
-        // 1. Aggiorna il template fisso
         await updateDoc(
           doc(db, "fixed_tasks", templateToEdit.id),
           templateData,
         );
 
-        // 2. Propaga in automatico ai task privati generati da questo template
         const qPrivate = query(
           collection(db, "private_tasks"),
           where("userId", "==", user.uid),
@@ -108,7 +107,6 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
         );
         const snapPrivate = await getDocs(qPrivate);
 
-        // 3. Propaga in automatico ai task condivisi (creati da questo utente) generati da questo template
         const qShared = query(
           collection(db, "shared_tasks"),
           where("authorId", "==", user.uid),
@@ -127,7 +125,6 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
           await batch.commit();
         }
       } else {
-        // Se è un nuovo template fisso, lo salviamo in fixed_tasks
         await addDoc(collection(db, "fixed_tasks"), {
           ...templateData,
           userId: user.uid,
@@ -137,9 +134,7 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
       onClose();
     } catch (error) {
       console.error("Errore salvataggio template:", error);
-      setErrorMsg(
-        "Errore nel salvataggio. Controlla i permessi o le connessioni.",
-      );
+      setErrorMsg("Errore nel salvataggio.");
     } finally {
       setLoading(false);
     }
@@ -175,7 +170,9 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
           <Text style={styles.modalTitle}>
-            {templateToEdit ? "Modifica Evento Fisso" : "Nuovo Evento Fisso"}
+            {templateToEdit
+              ? Testi.modali.modificaEventoFisso
+              : Testi.modali.nuovoEventoFisso}
           </Text>
 
           {errorMsg !== "" ? (
@@ -187,19 +184,19 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
           <ScrollView style={styles.scrollArea}>
             <TextInput
               style={styles.input}
-              placeholder="Titolo Evento Fisso *"
+              placeholder={Testi.modali.titoloPlaceholder}
               value={title}
               onChangeText={setTitle}
             />
 
             <View style={styles.switchRow}>
-              <Text style={styles.label}>Tutto il giorno</Text>
+              <Text style={styles.label}>{Testi.modali.tuttoIlGiorno}</Text>
               <Switch
                 value={isAllDay}
                 onValueChange={setIsAllDay}
                 trackColor={{
-                  false: theme.colors.textSecondary,
-                  true: theme.colors.primaryPrivate,
+                  false: PaletteColori.privato.textSecondary,
+                  true: PaletteColori.privato.primary,
                 }}
               />
             </View>
@@ -207,7 +204,7 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
             {!isAllDay ? (
               <View style={styles.dateRow}>
                 <View style={styles.dateInputContainer}>
-                  <Text style={styles.label}>Ora Inizio</Text>
+                  <Text style={styles.label}>{Testi.modali.oraInizio}</Text>
                   <TouchableOpacity
                     style={styles.timeBox}
                     onPress={() => openTimePicker("start")}
@@ -216,7 +213,7 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
                   </TouchableOpacity>
                 </View>
                 <View style={styles.dateInputContainer}>
-                  <Text style={styles.label}>Ora Fine</Text>
+                  <Text style={styles.label}>{Testi.modali.oraFine}</Text>
                   <TouchableOpacity
                     style={styles.timeBox}
                     onPress={() => openTimePicker("end")}
@@ -227,27 +224,27 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
               </View>
             ) : null}
 
-            <Text style={styles.label}>Descrizione (Opzionale)</Text>
+            <Text style={styles.label}>{Testi.modali.descrizioneOptional}</Text>
             <TextInput
               style={[styles.input, styles.textArea]}
-              placeholder="Aggiungi dettagli..."
+              placeholder={Testi.modali.descrizionePlaceholder}
               value={description}
               onChangeText={setDescription}
               multiline={true}
               numberOfLines={2}
             />
 
-            <Text style={styles.label}>URL (Opzionale)</Text>
+            <Text style={styles.label}>{Testi.modali.urlOptional}</Text>
             <TextInput
               style={styles.input}
-              placeholder="https://..."
+              placeholder={Testi.modali.urlPlaceholder}
               value={url}
               onChangeText={setUrl}
               keyboardType="url"
               autoCapitalize="none"
             />
 
-            <Text style={styles.label}>Colore Predefinito</Text>
+            <Text style={styles.label}>{Testi.modali.colore}</Text>
             <View style={styles.colorContainer}>{renderColorOptions()}</View>
           </ScrollView>
 
@@ -257,7 +254,9 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
               onPress={onClose}
               disabled={loading}
             >
-              <Text style={styles.cancelButtonText}>Annulla</Text>
+              <Text style={styles.cancelButtonText}>
+                {Testi.modali.btnAnnulla}
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -271,7 +270,9 @@ export default function FixedTaskModal({ visible, onClose, templateToEdit }) {
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.saveButtonText}>Salva</Text>
+                <Text style={styles.saveButtonText}>
+                  {Testi.modali.btnSalva}
+                </Text>
               )}
             </TouchableOpacity>
           </View>
@@ -293,96 +294,106 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
     justifyContent: "center",
-    padding: theme.spacing.l,
+    padding: PaletteColori.spacing.l,
   },
   modalCard: {
-    backgroundColor: theme.colors.cardBackground,
-    padding: theme.spacing.l,
-    borderRadius: theme.borderRadius.card,
+    backgroundColor: PaletteColori.privato.cardBackground,
+    padding: PaletteColori.spacing.l,
+    borderRadius: PaletteColori.borderRadius.card,
     maxHeight: "85%",
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: theme.colors.textMain,
+    color: PaletteColori.privato.textMain,
     textAlign: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorBanner: {
     backgroundColor: "#FFE5E5",
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
-    marginBottom: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
+    marginBottom: PaletteColori.spacing.m,
   },
   errorText: {
-    color: theme.colors.error,
+    color: PaletteColori.privato.error,
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 14,
   },
-  scrollArea: { marginBottom: theme.spacing.m },
+  scrollArea: { marginBottom: PaletteColori.spacing.m },
   input: {
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
+    backgroundColor: PaletteColori.privato.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
     fontSize: 16,
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   textArea: { minHeight: 60, textAlignVertical: "top" },
   switchRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: theme.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   dateRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: theme.spacing.m,
-    marginBottom: theme.spacing.m,
+    gap: PaletteColori.spacing.m,
+    marginBottom: PaletteColori.spacing.m,
   },
   dateInputContainer: { flex: 1 },
   timeBox: {
-    backgroundColor: theme.colors.privateBackground,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.input,
+    backgroundColor: PaletteColori.privato.background,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.input,
     alignItems: "center",
   },
-  timeText: { fontSize: 18, fontWeight: "bold", color: theme.colors.textMain },
+  timeText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: PaletteColori.privato.textMain,
+  },
   label: {
     fontSize: 14,
     fontWeight: "bold",
-    color: theme.colors.textSecondary,
-    marginBottom: theme.spacing.s,
+    color: PaletteColori.privato.textSecondary,
+    marginBottom: PaletteColori.spacing.s,
   },
   colorContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingHorizontal: theme.spacing.s,
-    marginBottom: theme.spacing.m,
+    paddingHorizontal: PaletteColori.spacing.s,
+    marginBottom: PaletteColori.spacing.m,
   },
   colorCircle: { width: 32, height: 32, borderRadius: 16 },
-  selectedColor: { borderWidth: 3, borderColor: theme.colors.textMain },
+  selectedColor: {
+    borderWidth: 3,
+    borderColor: PaletteColori.privato.textMain,
+  },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: theme.spacing.m,
+    paddingTop: PaletteColori.spacing.m,
     borderTopWidth: 1,
-    borderTopColor: theme.colors.privateBackground,
-    gap: theme.spacing.m,
+    borderTopColor: PaletteColori.privato.background,
+    gap: PaletteColori.spacing.m,
   },
   cancelButton: {
-    padding: theme.spacing.m,
+    padding: PaletteColori.spacing.m,
     flex: 1,
     alignItems: "center",
-    backgroundColor: theme.colors.privateBackground,
-    borderRadius: theme.borderRadius.button,
+    backgroundColor: PaletteColori.privato.background,
+    borderRadius: PaletteColori.borderRadius.button,
   },
-  cancelButtonText: { color: theme.colors.textSecondary, fontWeight: "bold" },
+  cancelButtonText: {
+    color: PaletteColori.privato.textSecondary,
+    fontWeight: "bold",
+  },
   saveButton: {
-    backgroundColor: theme.colors.primaryPrivate,
-    padding: theme.spacing.m,
-    borderRadius: theme.borderRadius.button,
+    backgroundColor: PaletteColori.privato.primary,
+    padding: PaletteColori.spacing.m,
+    borderRadius: PaletteColori.borderRadius.button,
     flex: 1,
     alignItems: "center",
   },
