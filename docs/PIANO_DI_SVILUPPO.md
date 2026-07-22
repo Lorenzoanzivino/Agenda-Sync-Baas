@@ -285,8 +285,6 @@ Implementazione della sincronizzazione realtime tramite Firestore.
 
 ---
 
-# Fase 6 – Implementazione: Notifiche Push
-
 # Fase 6 – Implementazione: Notifiche In-App (Area Condivisa)
 
 ## Task 6.1 – Trigger e Generazione Notifiche

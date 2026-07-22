@@ -15,7 +15,6 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  getDocs,
   writeBatch,
 } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
@@ -25,7 +24,7 @@ import { useAuthStore } from "../store/useAuthStore";
 import TaskModal from "../components/TaskModal";
 
 export default function PrivateTodayScreen() {
-  const { user } = useAuthStore();
+  const { user, userData } = useAuthStore();
   const [tasks, setTasks] = useState([]);
   const [isModalVisible, setModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
@@ -36,7 +35,23 @@ export default function PrivateTodayScreen() {
     day: "numeric",
     month: "long",
   });
-  const todayISO = todayObj.toISOString().split("T")[0];
+  const todayISO = todayObj.toISOString().split("T")[0]; // YYYY-MM-DD
+
+  // Estraiamo MM-DD da todayISO (es. "09-09")
+  const todayDayMonth = todayISO.substring(5);
+
+  // Estraiamo MM-DD dalla data di nascita salvata (DD-MM-YYYY) se esiste
+  let isBirthday = false;
+  if (userData?.birthDate) {
+    const parts = userData.birthDate.split("-");
+    if (parts.length === 3) {
+      // Invertiamo per avere MM-DD
+      const birthDayMonth = `${parts[1]}-${parts[0]}`;
+      if (todayDayMonth === birthDayMonth) {
+        isBirthday = true;
+      }
+    }
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -113,6 +128,22 @@ export default function PrivateTodayScreen() {
   const openEditTaskModal = (task) => {
     setTaskToEdit(task);
     setModalVisible(true);
+  };
+
+  const renderBirthdayCard = () => {
+    return (
+      <View style={[styles.taskCard, styles.birthdayCard]}>
+        <View style={styles.birthdayIconBox}>
+          <Text style={{ fontSize: 28 }}>🎂</Text>
+        </View>
+        <View style={styles.taskContent}>
+          <Text style={styles.birthdayTitle}>Tanti Auguri!</Text>
+          <Text style={styles.birthdayText}>
+            Oggi è il tuo compleanno! Goditi questa giornata.
+          </Text>
+        </View>
+      </View>
+    );
   };
 
   const renderTasks = () => {
@@ -232,7 +263,6 @@ export default function PrivateTodayScreen() {
         <TouchableOpacity onPress={() => auth.signOut()}>
           <Ionicons
             name="log-out-outline"
-            size2={28}
             size={28}
             color={theme.colors.error}
           />
@@ -244,6 +274,7 @@ export default function PrivateTodayScreen() {
           <Text style={styles.dateText}>{todayFormatted}</Text>
         </View>
 
+        {isBirthday ? renderBirthdayCard() : null}
         {renderTasks()}
       </ScrollView>
 
@@ -309,6 +340,24 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     color: theme.colors.textSecondary,
+  },
+  birthdayCard: {
+    backgroundColor: "#FFF0F5",
+    borderWidth: 2,
+    borderColor: "#FF69B4",
+  },
+  birthdayIconBox: {
+    marginRight: theme.spacing.m,
+  },
+  birthdayTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#FF1493",
+  },
+  birthdayText: {
+    fontSize: 14,
+    color: theme.colors.textMain,
+    marginTop: 2,
   },
   taskCard: {
     flexDirection: "row",
