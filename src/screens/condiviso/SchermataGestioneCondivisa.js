@@ -29,6 +29,9 @@ import { Testi } from "../../palette_e_testi/Testi";
 import { useAuthStore } from "../../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
+// Importiamo l'utility di conferma
+import { confermaAzione } from "../../utils/alertUtils";
+
 export default function SchermataGestioneCondivisa() {
   const { user, activeSharedCalendarId, setActiveSharedCalendarId } =
     useAuthStore();
@@ -133,15 +136,13 @@ export default function SchermataGestioneCondivisa() {
     }
   };
 
-  const handleLeaveOrDeleteCalendar = async () => {
+  const handleLeaveOrDeleteCalendar = () => {
     if (!activeSharedCalendarId || !activeCalendarData) return;
 
     const isOwner = activeCalendarData.ownerId === user.uid;
 
     if (isOwner) {
-      if (
-        window.confirm(Testi.condiviso.alertEliminaCalendario)
-      ) {
+      confermaAzione(Testi.condiviso.alertEliminaCalendario, async () => {
         try {
           const qTasks = query(
             collection(db, "shared_tasks"),
@@ -157,11 +158,9 @@ export default function SchermataGestioneCondivisa() {
           console.error("Errore eliminazione calendario:", error);
           setErrorMsg("Errore durante l'eliminazione.");
         }
-      }
+      });
     } else {
-      if (
-        window.confirm(Testi.condiviso.alertEsciCalendario)
-      ) {
+      confermaAzione(Testi.condiviso.alertEsciCalendario, async () => {
         try {
           const calRef = doc(db, "shared_calendars", activeSharedCalendarId);
           await updateDoc(calRef, { members: arrayRemove(user.uid) });
@@ -169,7 +168,7 @@ export default function SchermataGestioneCondivisa() {
           console.error("Errore uscita calendario:", error);
           setErrorMsg("Errore durante l'uscita dal calendario.");
         }
-      }
+      });
     }
   };
 

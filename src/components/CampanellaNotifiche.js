@@ -23,6 +23,9 @@ import { Testi } from "../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../store/useAuthStore";
 
+// Importiamo l'utility di conferma nativa
+import { confermaAzione } from "../utils/alertUtils";
+
 export default function CampanellaNotifiche({ onNavigateToDate }) {
   const { user, activeSharedCalendarId } = useAuthStore();
   const [notifiche, setNotifiche] = useState([]);
@@ -67,17 +70,17 @@ export default function CampanellaNotifiche({ onNavigateToDate }) {
     await deleteDoc(doc(db, "inapp_notifications", id));
   };
 
-  const handleSvuotaTutte = async () => {
+  const handleSvuotaTutte = () => {
     if (notifiche.length === 0) return;
-    if (
-      window.confirm("Vuoi eliminare tutte le notifiche di questo calendario?") // Potresti aggiungere in Testi.js se lo desideri
-    ) {
+    
+    // Utilizziamo il nuovo alert cross-platform
+    confermaAzione("Vuoi eliminare tutte le notifiche di questo calendario?", async () => {
       const batch = writeBatch(db);
       notifiche.forEach((n) => {
         batch.delete(doc(db, "inapp_notifications", n.id));
       });
       await batch.commit();
-    }
+    });
   };
 
   return (

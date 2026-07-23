@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Modal,
   View,
@@ -22,6 +22,7 @@ export default function DayDetailsModal({
   onOpenUrl,
   onResetDay,
   onAddTask,
+  isShared = false, // Prop per determinare se è il calendario condiviso o privato
 }) {
   const { userData } = useAuthStore();
 
@@ -33,8 +34,9 @@ export default function DayDetailsModal({
       })
     : "";
 
+  // Calcolo compleanno solo se NON siamo in un calendario condiviso
   let isBirthday = false;
-  if (date && userData?.birthDate) {
+  if (!isShared && date && userData?.birthDate) {
     const dayMonthToCheck = date.substring(5);
     const parts = userData.birthDate.split("-");
     if (parts.length === 3) {
@@ -44,6 +46,12 @@ export default function DayDetailsModal({
       }
     }
   }
+
+  // Seleziona la palette corretta dinamicamente
+  const currentPalette = isShared ? PaletteColori.condiviso : PaletteColori.privato;
+  
+  // Applica gli stili basati sulla palette scelta
+  const styles = useMemo(() => getStyles(currentPalette), [currentPalette]);
 
   return (
     <Modal visible={visible} transparent={true} animationType="slide">
@@ -69,7 +77,7 @@ export default function DayDetailsModal({
                   <Ionicons
                     name="reload-outline"
                     size={22}
-                    color={PaletteColori.privato.error}
+                    color={currentPalette.error}
                   />
                 </TouchableOpacity>
               ) : null}
@@ -78,7 +86,7 @@ export default function DayDetailsModal({
               <Ionicons
                 name="close-circle"
                 size={28}
-                color={PaletteColori.privato.textSecondary}
+                color={currentPalette.textSecondary}
               />
             </TouchableOpacity>
           </View>
@@ -149,7 +157,7 @@ export default function DayDetailsModal({
                         <Ionicons
                           name="link"
                           size={22}
-                          color={PaletteColori.privato.primary}
+                          color={currentPalette.primary}
                         />
                       </TouchableOpacity>
                     ) : null}
@@ -161,7 +169,7 @@ export default function DayDetailsModal({
                       <Ionicons
                         name="pencil-outline"
                         size={22}
-                        color={PaletteColori.privato.primary}
+                        color={currentPalette.primary}
                       />
                     </TouchableOpacity>
 
@@ -172,7 +180,7 @@ export default function DayDetailsModal({
                       <Ionicons
                         name="trash-outline"
                         size={22}
-                        color={PaletteColori.privato.error}
+                        color={currentPalette.error}
                       />
                     </TouchableOpacity>
                   </View>
@@ -192,14 +200,15 @@ export default function DayDetailsModal({
   );
 }
 
-const styles = StyleSheet.create({
+// Funzione Factory per gli stili dinamici in base al tema
+const getStyles = (palette) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   card: {
-    backgroundColor: PaletteColori.privato.cardBackground,
+    backgroundColor: palette.cardBackground,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: PaletteColori.spacing.l,
@@ -215,12 +224,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 22,
     fontWeight: "bold",
-    color: PaletteColori.privato.primary,
+    color: palette.primary,
     textTransform: "capitalize",
   },
   addButton: {
     padding: 6,
-    backgroundColor: PaletteColori.privato.primary,
+    backgroundColor: palette.primary,
     borderRadius: 12,
   },
   resetButton: {
@@ -234,15 +243,15 @@ const styles = StyleSheet.create({
   taskCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: PaletteColori.privato.background,
+    backgroundColor: palette.background,
     padding: PaletteColori.spacing.m,
     borderRadius: PaletteColori.borderRadius.card,
     marginBottom: PaletteColori.spacing.s,
   },
   birthdayCard: {
-    backgroundColor: PaletteColori.privato.birthdayBackground,
+    backgroundColor: PaletteColori.privato.birthdayBackground, // Colore fisso privato
     borderWidth: 2,
-    borderColor: PaletteColori.privato.birthdayBadge,
+    borderColor: PaletteColori.privato.birthdayBadge, // Colore fisso privato
   },
   birthdayIconBox: {
     marginRight: PaletteColori.spacing.m,
@@ -250,11 +259,11 @@ const styles = StyleSheet.create({
   birthdayTitle: {
     fontSize: 18,
     fontWeight: "bold",
-    color: PaletteColori.privato.birthdayBadge,
+    color: PaletteColori.privato.birthdayBadge, // Colore fisso privato
   },
   birthdayText: {
     fontSize: 14,
-    color: PaletteColori.privato.textMain,
+    color: palette.textMain,
     marginTop: 2,
   },
   colorIndicator: {
@@ -270,20 +279,20 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 16,
     fontWeight: "bold",
-    color: PaletteColori.privato.textMain,
+    color: palette.textMain,
   },
   taskTitleCompleted: {
     textDecorationLine: "line-through",
-    color: PaletteColori.privato.textSecondary,
+    color: palette.textSecondary,
   },
   taskTime: {
     fontSize: 12,
-    color: PaletteColori.privato.textSecondary,
+    color: palette.textSecondary,
     marginTop: 2,
   },
   taskDescription: {
     fontSize: 13,
-    color: PaletteColori.privato.textSecondary,
+    color: palette.textSecondary,
     marginTop: 4,
     fontStyle: "italic",
   },
@@ -301,7 +310,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   emptyText: {
-    color: PaletteColori.privato.textSecondary,
+    color: palette.textSecondary,
     fontStyle: "italic",
   },
 });

@@ -24,16 +24,19 @@ import { PaletteColori } from "../../palette_e_testi/PaletteColori";
 import { Testi } from "../../palette_e_testi/Testi";
 import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../store/useAuthStore";
-import ModaleTaskCondiviso from "../../components/ModaleTaskCondiviso";
 import CampanellaNotifiche from "../../components/CampanellaNotifiche";
 import { inviaNotificaIscritti } from "../../utils/notificheUtils";
+import { useSharedTasks } from "../../hooks/useSharedTasks";
+
+// Nuova importazione del Modale Unificato e utility alert
+import TaskModal from "../../components/TaskModal";
+import { confermaAzione } from "../../utils/alertUtils";
 
 export default function SchermataOggiCondivisa() {
   const { user, activeSharedCalendarId, setActiveSharedCalendarId } =
     useAuthStore();
   const navigation = useNavigation();
 
-  const [tasks, setTasks] = useState([]);
   const [calendarName, setCalendarName] = useState("");
   const [isModalVisible, setModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
@@ -47,6 +50,8 @@ export default function SchermataOggiCondivisa() {
   const todayISO = todayObj.toISOString().split("T")[0];
 
   const nomeUtente = user?.email?.split("@")[0] || "Un membro";
+
+  const { tasks } = useSharedTasks(activeSharedCalendarId, todayISO);
 
   useEffect(() => {
     if (!user || activeSharedCalendarId) return;
@@ -76,39 +81,14 @@ export default function SchermataOggiCondivisa() {
     return () => unsubscribeCal();
   }, [activeSharedCalendarId]);
 
-  useEffect(() => {
-    if (!activeSharedCalendarId) return;
-
-    const q = query(
-      collection(db, "shared_tasks"),
-      where("calendarId", "==", activeSharedCalendarId),
-      where("date", "==", todayISO),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = [];
-      snapshot.forEach((document) =>
-        tasksData.push({ id: document.id, ...document.data() }),
-      );
-      tasksData.sort((a, b) => {
-        if (a.isCompleted === b.isCompleted)
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        return a.isCompleted ? 1 : -1;
-      });
-      setTasks(tasksData);
-    });
-
-    return () => unsubscribe();
-  }, [activeSharedCalendarId, todayISO]);
-
   const toggleTaskStatus = async (task) => {
     await updateDoc(doc(db, "shared_tasks", task.id), {
       isCompleted: !task.isCompleted,
     });
   };
 
-  const deleteTask = async (task) => {
-    if (window.confirm(Testi.modali.alertEliminaTask)) {
+  const deleteTask = (task) => {
+    confermaAzione(Testi.modali.alertEliminaTask, async () => {
       await deleteDoc(doc(db, "shared_tasks", task.id));
       await inviaNotificaIscritti({
         calendarId: activeSharedCalendarId,
@@ -117,14 +97,12 @@ export default function SchermataOggiCondivisa() {
         message: `${nomeUtente} ha eliminato l'evento "${task.title}".`,
         targetDate: todayISO,
       });
-    }
+    });
   };
 
-  const resetTodayTasks = async () => {
+  const resetTodayTasks = () => {
     if (tasks.length === 0) return;
-    if (
-      window.confirm(`${Testi.condiviso.alertSvuotaOggi} "${calendarName}"?`)
-    ) {
+    confermaAzione(`${Testi.condiviso.alertSvuotaOggi} "${calendarName}"?`, async () => {
       try {
         const batch = writeBatch(db);
         tasks.forEach((t) => batch.delete(doc(db, "shared_tasks", t.id)));
@@ -140,7 +118,7 @@ export default function SchermataOggiCondivisa() {
       } catch (e) {
         console.error("Errore reset:", e);
       }
-    }
+    });
   };
 
   const openUrl = async (url) => {
@@ -335,11 +313,13 @@ export default function SchermataOggiCondivisa() {
         <Ionicons name="add" size={32} color="#FFF" />
       </TouchableOpacity>
 
-      <ModaleTaskCondiviso
+      {/* Utilizzo del Modale Unificato! */}
+      <TaskModal
         visible={isModalVisible}
         onClose={() => setModalVisible(false)}
         selectedDate={todayISO}
         taskToEdit={taskToEdit}
+        isShared={true} 
       />
     </View>
   );

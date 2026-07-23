@@ -11,14 +11,13 @@ import {
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import {
   collection,
-  query,
-  where,
-  onSnapshot,
   addDoc,
   doc,
   deleteDoc,
-  getDocs,
   writeBatch,
+  query,
+  where,
+  getDocs,
 } from "firebase/firestore";
 import { auth, db } from "../../config/firebase";
 import { PaletteColori } from "../../palette_e_testi/PaletteColori";
@@ -26,47 +25,26 @@ import { Testi } from "../../palette_e_testi/Testi";
 import { useAuthStore } from "../../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
+// Import Custom Hooks e Utility
+import { useFixedTasks } from "../../hooks/useFixedTasks";
+import { usePrivateTasks } from "../../hooks/usePrivateTasks";
+import { confermaAzione } from "../../utils/alertUtils";
+
 import FixedTaskModal from "../../components/FixedTaskModal";
 import DayDetailsModal from "../../components/DayDetailsModal";
 import TaskModal from "../../components/TaskModal";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
-    "Gennaio",
-    "Febbraio",
-    "Marzo",
-    "Aprile",
-    "Maggio",
-    "Giugno",
-    "Luglio",
-    "Agosto",
-    "Settembre",
-    "Ottobre",
-    "Novembre",
-    "Dicembre",
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
   ],
   monthNamesShort: [
-    "Gen",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mag",
-    "Giu",
-    "Lug",
-    "Ago",
-    "Set",
-    "Ott",
-    "Nov",
-    "Dic",
+    "Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
+    "Lug", "Ago", "Set", "Ott", "Nov", "Dic",
   ],
   dayNames: [
-    "Domenica",
-    "Lunedì",
-    "Martedì",
-    "Mercoledì",
-    "Giovedì",
-    "Venerdì",
-    "Sabato",
+    "Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato",
   ],
   dayNamesShort: ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
   today: Testi.privato.oggiTitle,
@@ -77,8 +55,6 @@ export default function PrivateCalendarScreen() {
   const { user, userData } = useAuthStore();
   const todayISO = new Date().toISOString().split("T")[0];
 
-  const [fixedTasks, setFixedTasks] = useState([]);
-  const [allPrivateTasks, setAllPrivateTasks] = useState([]);
   const [selectedDates, setSelectedDates] = useState({});
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
   const [isFixedModalVisible, setFixedModalVisible] = useState(false);
@@ -88,9 +64,13 @@ export default function PrivateCalendarScreen() {
 
   const [isDayModalVisible, setIsDayModalVisible] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
-  const [dayTasks, setDayTasks] = useState([]);
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
+
+  // Utilizzo dei Custom Hooks al posto dei vecchi useEffect
+  const { fixedTasks } = useFixedTasks(user?.uid);
+  const { tasks: allPrivateTasks } = usePrivateTasks(user?.uid);
+  const { tasks: dayTasks } = usePrivateTasks(user?.uid, selectedDayDate);
 
   let birthDayMonth = null;
   if (userData?.birthDate) {
@@ -99,60 +79,6 @@ export default function PrivateCalendarScreen() {
       birthDayMonth = `${parts[1]}-${parts[0]}`;
     }
   }
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(
-      collection(db, "fixed_tasks"),
-      where("userId", "==", user.uid),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const templates = [];
-      snapshot.forEach((document) =>
-        templates.push({ id: document.id, ...document.data() }),
-      );
-      setFixedTasks(templates);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(
-      collection(db, "private_tasks"),
-      where("userId", "==", user.uid),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = [];
-      snapshot.forEach((document) =>
-        tasksData.push({ id: document.id, ...document.data() }),
-      );
-      setAllPrivateTasks(tasksData);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    if (!user || !selectedDayDate) return;
-    const q = query(
-      collection(db, "private_tasks"),
-      where("userId", "==", user.uid),
-      where("date", "==", selectedDayDate),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = [];
-      snapshot.forEach((document) =>
-        tasksData.push({ id: document.id, ...document.data() }),
-      );
-      tasksData.sort((a, b) => {
-        if (a.isCompleted === b.isCompleted)
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        return a.isCompleted ? 1 : -1;
-      });
-      setDayTasks(tasksData);
-    });
-    return () => unsubscribe();
-  }, [user, selectedDayDate]);
 
   const onDayPress = (day) => {
     const dateString = day.dateString;
@@ -248,19 +174,19 @@ export default function PrivateCalendarScreen() {
     }
   };
 
-  const deleteTemplate = async (id) => {
-    if (window.confirm("Vuoi davvero eliminare questo evento fisso?")) {
+  const deleteTemplate = (id) => {
+    confermaAzione("Vuoi davvero eliminare questo evento fisso?", async () => {
       await deleteDoc(doc(db, "fixed_tasks", id));
       if (selectedTemplateId === id) {
         setSelectedTemplateId(null);
         setSelectedDates({});
       }
-    }
+    });
   };
 
-  const resetAllCalendarTasks = async () => {
+  const resetAllCalendarTasks = () => {
     if (allPrivateTasks.length === 0) return;
-    if (window.confirm(Testi.privato.alertSvuotaCalendario)) {
+    confermaAzione(Testi.privato.alertSvuotaCalendario, async () => {
       try {
         const batch = writeBatch(db);
         allPrivateTasks.forEach((t) => {
@@ -272,12 +198,12 @@ export default function PrivateCalendarScreen() {
       } catch (e) {
         console.error("Errore reset calendario:", e);
       }
-    }
+    });
   };
 
-  const resetFixedTasksList = async () => {
+  const resetFixedTasksList = () => {
     if (fixedTasks.length === 0) return;
-    if (window.confirm(Testi.privato.alertSvuotaFissi)) {
+    confermaAzione(Testi.privato.alertSvuotaFissi, async () => {
       try {
         const batch = writeBatch(db);
         fixedTasks.forEach((ft) => {
@@ -289,14 +215,12 @@ export default function PrivateCalendarScreen() {
       } catch (e) {
         console.error("Errore reset lista fissi:", e);
       }
-    }
+    });
   };
 
-  const resetSpecificDayTasks = async () => {
+  const resetSpecificDayTasks = () => {
     if (!selectedDayDate || dayTasks.length === 0) return;
-    if (
-      window.confirm(`${Testi.privato.alertSvuotaOggi} ${selectedDayDate}?`)
-    ) {
+    confermaAzione(`${Testi.privato.alertSvuotaOggi} ${selectedDayDate}?`, async () => {
       try {
         const batch = writeBatch(db);
         dayTasks.forEach((dt) => {
@@ -306,7 +230,7 @@ export default function PrivateCalendarScreen() {
       } catch (e) {
         console.error("Errore reset giorno:", e);
       }
-    }
+    });
   };
 
   const openNewTaskModalForDay = () => {
@@ -582,10 +506,10 @@ export default function PrivateCalendarScreen() {
           setTaskToEdit(task);
           setIsTaskModalVisible(true);
         }}
-        onDeleteTask={async (taskId) => {
-          if (window.confirm(Testi.modali.alertEliminaTask)) {
+        onDeleteTask={(taskId) => {
+          confermaAzione(Testi.modali.alertEliminaTask, async () => {
             await deleteDoc(doc(db, "private_tasks", taskId));
-          }
+          });
         }}
         onOpenUrl={openUrl}
       />

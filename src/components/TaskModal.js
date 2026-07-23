@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Modal,
   View,
@@ -10,21 +10,14 @@ import {
   Switch,
   ScrollView,
 } from "react-native";
-import {
-  collection,
-  addDoc,
-  updateDoc,
-  doc,
-  getDocs,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, addDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { PaletteColori } from "../palette_e_testi/PaletteColori";
 import { Testi } from "../palette_e_testi/Testi";
 import { useAuthStore } from "../store/useAuthStore";
 import TimePickerModal from "./TimePickerModal";
-import { Ionicons } from "@expo/vector-icons";
+import { useFixedTasks } from "../hooks/useFixedTasks";
+import { inviaNotificaIscritti } from "../utils/notificheUtils";
 
 const TASK_COLORS = ["#0A84FF", "#34C759", "#FF3B30", "#AF52DE", "#FF9500"];
 
@@ -33,8 +26,9 @@ export default function TaskModal({
   onClose,
   selectedDate,
   taskToEdit,
+  isShared = false, // Prop chiave per la fusione
 }) {
-  const { user } = useAuthStore();
+  const { user, activeSharedCalendarId } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -46,28 +40,23 @@ export default function TaskModal({
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
 
-  const [fixedTasksList, setFixedTasksList] = useState([]);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [pickerTarget, setPickerTarget] = useState("start");
 
-  useEffect(() => {
-    if (!user || !visible || taskToEdit) return;
-    const fetchFixed = async () => {
-      try {
-        const q = query(
-          collection(db, "fixed_tasks"),
-          where("userId", "==", user.uid),
-        );
-        const snap = await getDocs(q);
-        const list = [];
-        snap.forEach((d) => list.push({ id: d.id, ...d.data() }));
-        setFixedTasksList(list);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    fetchFixed();
-  }, [user, visible, taskToEdit]);
+  const nomeUtente = user?.email?.split("@")[0] || "Un membro";
+
+  // Stili e Testi Dinamici in base al contesto
+  const currentPalette = isShared ? PaletteColori.condiviso : PaletteColori.privato;
+  const styles = useMemo(() => getStyles(currentPalette), [currentPalette]);
+  
+  const modalTitleText = taskToEdit
+    ? isShared ? Testi.modali.modificaTaskCondiviso : Testi.modali.modificaTaskPrivato
+    : isShared ? Testi.modali.nuovoTaskCondiviso : Testi.modali.nuovoTaskPrivato;
+
+  // Fetch task fissi solo se stiamo creando un nuovo task
+  const { fixedTasks: fixedTasksList } = useFixedTasks(
+    visible && !taskToEdit ? user?.uid : null
+  );
 
   useEffect(() => {
     if (taskToEdit) {
@@ -102,13 +91,11 @@ export default function TaskModal({
 
   const handleSave = async () => {
     if (!title.trim()) return;
+    if (isShared && !activeSharedCalendarId) return;
 
     if (!isAllDay) {
-      const startTotal =
-        parseInt(startTime.split(":")[0]) * 60 +
-        parseInt(startTime.split(":")[1]);
-      const endTotal =
-        parseInt(endTime.split(":")[0]) * 60 + parseInt(endTime.split(":")[1]);
+      const startTotal = parseInt(startTime.split(":")[0]) * 60 + parseInt(startTime.split(":")[1]);
+      const endTotal = parseInt(endTime.split(":")[0]) * 60 + parseInt(endTime.split(":")[1]);
 
       if (startTotal > endTotal) {
         setErrorMsg(Testi.modali.erroreInizioFine);
@@ -130,16 +117,47 @@ export default function TaskModal({
     };
 
     try {
-      if (taskToEdit) {
-        await updateDoc(doc(db, "private_tasks", taskToEdit.id), taskData);
+      if (isShared) {
+        // --- LOGICA SALVATAGGIO CONDIVISO ---
+        if (taskToEdit) {
+          await updateDoc(doc(db, "shared_tasks", taskToEdit.id), taskData);
+          await inviaNotificaIscritti({
+            calendarId: activeSharedCalendarId,
+            currentUserId: user.uid,
+            title: "Evento Modificato",
+            message: `${nomeUtente} ha modificato l'evento "${title.trim()}".`,
+            targetDate: selectedDate,
+          });
+        } else {
+          await addDoc(collection(db, "shared_tasks"), {
+            ...taskData,
+            authorId: user.uid,
+            calendarId: activeSharedCalendarId,
+            date: selectedDate,
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+          });
+          await inviaNotificaIscritti({
+            calendarId: activeSharedCalendarId,
+            currentUserId: user.uid,
+            title: "Nuovo Evento Condiviso",
+            message: `${nomeUtente} ha aggiunto l'evento "${title.trim()}".`,
+            targetDate: selectedDate,
+          });
+        }
       } else {
-        await addDoc(collection(db, "private_tasks"), {
-          ...taskData,
-          userId: user.uid,
-          date: selectedDate,
-          isCompleted: false,
-          createdAt: new Date().toISOString(),
-        });
+        // --- LOGICA SALVATAGGIO PRIVATO ---
+        if (taskToEdit) {
+          await updateDoc(doc(db, "private_tasks", taskToEdit.id), taskData);
+        } else {
+          await addDoc(collection(db, "private_tasks"), {
+            ...taskData,
+            userId: user.uid,
+            date: selectedDate,
+            isCompleted: false,
+            createdAt: new Date().toISOString(),
+          });
+        }
       }
       onClose();
     } catch (error) {
@@ -155,11 +173,8 @@ export default function TaskModal({
   };
 
   const handleTimeConfirm = (timeStr) => {
-    if (pickerTarget === "start") {
-      setStartTime(timeStr);
-    } else {
-      setEndTime(timeStr);
-    }
+    if (pickerTarget === "start") setStartTime(timeStr);
+    else setEndTime(timeStr);
     setShowTimePicker(false);
   };
 
@@ -181,11 +196,7 @@ export default function TaskModal({
     <Modal visible={visible} transparent={true} animationType="fade">
       <View style={styles.overlay}>
         <View style={styles.modalCard}>
-          <Text style={styles.modalTitle}>
-            {taskToEdit
-              ? Testi.modali.modificaTaskPrivato
-              : Testi.modali.nuovoTaskPrivato}
-          </Text>
+          <Text style={styles.modalTitle}>{modalTitleText}</Text>
 
           {errorMsg !== "" && (
             <View style={styles.errorBanner}>
@@ -197,20 +208,14 @@ export default function TaskModal({
             {!taskToEdit && fixedTasksList.length > 0 ? (
               <View style={styles.templatePickerBox}>
                 <Text style={styles.label}>{Testi.modali.importaFisso}</Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={styles.templateChipsRow}
-                >
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.templateChipsRow}>
                   {fixedTasksList.map((ft) => (
                     <TouchableOpacity
                       key={ft.id}
                       style={[styles.templateChip, { borderColor: ft.color }]}
                       onPress={() => handleSelectTemplate(ft)}
                     >
-                      <View
-                        style={[styles.chipDot, { backgroundColor: ft.color }]}
-                      />
+                      <View style={[styles.chipDot, { backgroundColor: ft.color }]} />
                       <Text style={styles.chipText}>{ft.title}</Text>
                     </TouchableOpacity>
                   ))}
@@ -231,8 +236,8 @@ export default function TaskModal({
                 value={isAllDay}
                 onValueChange={setIsAllDay}
                 trackColor={{
-                  false: PaletteColori.privato.textSecondary,
-                  true: PaletteColori.privato.primary,
+                  false: currentPalette.textSecondary,
+                  true: currentPalette.primary,
                 }}
               />
             </View>
@@ -241,19 +246,13 @@ export default function TaskModal({
               <View style={styles.dateRow}>
                 <View style={styles.dateInputContainer}>
                   <Text style={styles.label}>{Testi.modali.oraInizio}</Text>
-                  <TouchableOpacity
-                    style={styles.timeBox}
-                    onPress={() => openTimePicker("start")}
-                  >
+                  <TouchableOpacity style={styles.timeBox} onPress={() => openTimePicker("start")}>
                     <Text style={styles.timeText}>{startTime}</Text>
                   </TouchableOpacity>
                 </View>
                 <View style={styles.dateInputContainer}>
                   <Text style={styles.label}>{Testi.modali.oraFine}</Text>
-                  <TouchableOpacity
-                    style={styles.timeBox}
-                    onPress={() => openTimePicker("end")}
-                  >
+                  <TouchableOpacity style={styles.timeBox} onPress={() => openTimePicker("end")}>
                     <Text style={styles.timeText}>{endTime}</Text>
                   </TouchableOpacity>
                 </View>
@@ -285,30 +284,19 @@ export default function TaskModal({
           </ScrollView>
 
           <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.cancelButton}
-              onPress={onClose}
-              disabled={loading}
-            >
-              <Text style={styles.cancelButtonText}>
-                {Testi.modali.btnAnnulla}
-              </Text>
+            <TouchableOpacity style={styles.cancelButton} onPress={onClose} disabled={loading}>
+              <Text style={styles.cancelButtonText}>{Testi.modali.btnAnnulla}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.saveButton,
-                !title.trim() && styles.saveButtonDisabled,
-              ]}
+              style={[styles.saveButton, !title.trim() && styles.saveButtonDisabled]}
               onPress={handleSave}
               disabled={loading || !title.trim()}
             >
               {loading ? (
                 <ActivityIndicator color="#FFF" />
               ) : (
-                <Text style={styles.saveButtonText}>
-                  {Testi.modali.btnSalva}
-                </Text>
+                <Text style={styles.saveButtonText}>{Testi.modali.btnSalva}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -325,7 +313,8 @@ export default function TaskModal({
   );
 }
 
-const styles = StyleSheet.create({
+// Funzione Factory per generare gli stili dinamicamente in base alla palette passata
+const getStyles = (palette) => StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.4)",
@@ -333,7 +322,7 @@ const styles = StyleSheet.create({
     padding: PaletteColori.spacing.l,
   },
   modalCard: {
-    backgroundColor: PaletteColori.privato.cardBackground,
+    backgroundColor: palette.cardBackground,
     padding: PaletteColori.spacing.l,
     borderRadius: PaletteColori.borderRadius.card,
     maxHeight: "85%",
@@ -341,7 +330,7 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: "bold",
-    color: PaletteColori.privato.textMain,
+    color: palette.textMain,
     textAlign: "center",
     marginBottom: PaletteColori.spacing.m,
   },
@@ -352,14 +341,14 @@ const styles = StyleSheet.create({
     marginBottom: PaletteColori.spacing.m,
   },
   errorText: {
-    color: PaletteColori.privato.error,
+    color: palette.error,
     fontWeight: "bold",
     textAlign: "center",
     fontSize: 14,
   },
   templatePickerBox: {
     marginBottom: PaletteColori.spacing.m,
-    backgroundColor: PaletteColori.privato.background,
+    backgroundColor: palette.background,
     padding: PaletteColori.spacing.s,
     borderRadius: PaletteColori.borderRadius.input,
   },
@@ -370,7 +359,7 @@ const styles = StyleSheet.create({
   templateChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: PaletteColori.privato.cardBackground,
+    backgroundColor: palette.cardBackground,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 16,
@@ -386,13 +375,13 @@ const styles = StyleSheet.create({
   chipText: {
     fontSize: 13,
     fontWeight: "600",
-    color: PaletteColori.privato.textMain,
+    color: palette.textMain,
   },
   scrollArea: {
     marginBottom: PaletteColori.spacing.m,
   },
   input: {
-    backgroundColor: PaletteColori.privato.background,
+    backgroundColor: palette.background,
     padding: PaletteColori.spacing.m,
     borderRadius: PaletteColori.borderRadius.input,
     fontSize: 16,
@@ -418,7 +407,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   timeBox: {
-    backgroundColor: PaletteColori.privato.background,
+    backgroundColor: palette.background,
     padding: PaletteColori.spacing.m,
     borderRadius: PaletteColori.borderRadius.input,
     alignItems: "center",
@@ -426,12 +415,12 @@ const styles = StyleSheet.create({
   timeText: {
     fontSize: 18,
     fontWeight: "bold",
-    color: PaletteColori.privato.textMain,
+    color: palette.textMain,
   },
   label: {
     fontSize: 14,
     fontWeight: "bold",
-    color: PaletteColori.privato.textSecondary,
+    color: palette.textSecondary,
     marginBottom: PaletteColori.spacing.s,
   },
   colorContainer: {
@@ -447,14 +436,14 @@ const styles = StyleSheet.create({
   },
   selectedColor: {
     borderWidth: 3,
-    borderColor: PaletteColori.privato.textMain,
+    borderColor: palette.textMain,
   },
   buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingTop: PaletteColori.spacing.m,
     borderTopWidth: 1,
-    borderTopColor: PaletteColori.privato.background,
+    borderTopColor: palette.background,
   },
   cancelButton: {
     padding: PaletteColori.spacing.m,
@@ -462,11 +451,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   cancelButtonText: {
-    color: PaletteColori.privato.textSecondary,
+    color: palette.textSecondary,
     fontWeight: "bold",
   },
   saveButton: {
-    backgroundColor: PaletteColori.privato.primary,
+    backgroundColor: palette.primary,
     padding: PaletteColori.spacing.m,
     borderRadius: PaletteColori.borderRadius.button,
     flex: 1,

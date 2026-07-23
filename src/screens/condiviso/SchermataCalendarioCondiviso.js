@@ -12,14 +12,14 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { Calendar, LocaleConfig } from "react-native-calendars";
 import {
   collection,
-  query,
-  where,
-  getDocs,
-  onSnapshot,
   addDoc,
   doc,
   deleteDoc,
   writeBatch,
+  query,
+  where,
+  getDocs,
+  onSnapshot,
 } from "firebase/firestore";
 import { auth, db } from "../../config/firebase";
 import { PaletteColori } from "../../palette_e_testi/PaletteColori";
@@ -27,49 +27,29 @@ import { Testi } from "../../palette_e_testi/Testi";
 import { useAuthStore } from "../../store/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 
-import ModaleDettagliCondiviso from "../../components/ModaleDettagliCondiviso";
-import ModaleTaskCondiviso from "../../components/ModaleTaskCondiviso";
+import { useFixedTasks } from "../../hooks/useFixedTasks";
+import { useSharedTasks } from "../../hooks/useSharedTasks";
+import { confermaAzione } from "../../utils/alertUtils";
+
+// Nuove importazioni unificate
+import DayDetailsModal from "../../components/DayDetailsModal";
+import TaskModal from "../../components/TaskModal";
+
 import FixedTaskModal from "../../components/FixedTaskModal";
 import CampanellaNotifiche from "../../components/CampanellaNotifiche";
 import { inviaNotificaIscritti } from "../../utils/notificheUtils";
 
 LocaleConfig.locales["it"] = {
   monthNames: [
-    "Gennaio",
-    "Febbraio",
-    "Marzo",
-    "Aprile",
-    "Maggio",
-    "Giugno",
-    "Luglio",
-    "Agosto",
-    "Settembre",
-    "Ottobre",
-    "Novembre",
-    "Dicembre",
+    "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+    "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre",
   ],
   monthNamesShort: [
-    "Gen",
-    "Feb",
-    "Mar",
-    "Apr",
-    "Mag",
-    "Giu",
-    "Lug",
-    "Ago",
-    "Set",
-    "Ott",
-    "Nov",
-    "Dic",
+    "Gen", "Feb", "Mar", "Apr", "Mag", "Giu",
+    "Lug", "Ago", "Set", "Ott", "Nov", "Dic",
   ],
   dayNames: [
-    "Domenica",
-    "Lunedì",
-    "Martedì",
-    "Mercoledì",
-    "Giovedì",
-    "Venerdì",
-    "Sabato",
+    "Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato",
   ],
   dayNamesShort: ["Dom", "Lun", "Mar", "Mer", "Gio", "Ven", "Sab"],
   today: Testi.condiviso.oggiTitle,
@@ -83,8 +63,6 @@ export default function SchermataCalendarioCondiviso() {
   const navigation = useNavigation();
 
   const [calendarName, setCalendarName] = useState("");
-  const [allSharedTasks, setAllSharedTasks] = useState([]);
-  const [personalFixedTasks, setPersonalFixedTasks] = useState([]);
 
   const [selectedDates, setSelectedDates] = useState({});
   const [selectedTemplateId, setSelectedTemplateId] = useState(null);
@@ -93,7 +71,6 @@ export default function SchermataCalendarioCondiviso() {
 
   const [isDayModalVisible, setIsDayModalVisible] = useState(false);
   const [selectedDayDate, setSelectedDayDate] = useState(null);
-  const [dayTasks, setDayTasks] = useState([]);
 
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [taskToEdit, setTaskToEdit] = useState(null);
@@ -103,6 +80,10 @@ export default function SchermataCalendarioCondiviso() {
 
   const nomeUtente = user?.email?.split("@")[0] || "Un membro";
   const todayISO = new Date().toISOString().split("T")[0];
+
+  const { tasks: allSharedTasks } = useSharedTasks(activeSharedCalendarId);
+  const { tasks: dayTasks } = useSharedTasks(activeSharedCalendarId, selectedDayDate);
+  const { fixedTasks: personalFixedTasks } = useFixedTasks(user?.uid);
 
   useEffect(() => {
     if (route.params?.selectedDateToOpen) {
@@ -137,60 +118,6 @@ export default function SchermataCalendarioCondiviso() {
     );
     return () => unsubscribeCal();
   }, [activeSharedCalendarId]);
-
-  useEffect(() => {
-    if (!activeSharedCalendarId) return;
-    const q = query(
-      collection(db, "shared_tasks"),
-      where("calendarId", "==", activeSharedCalendarId),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = [];
-      snapshot.forEach((document) =>
-        tasksData.push({ id: document.id, ...document.data() }),
-      );
-      setAllSharedTasks(tasksData);
-    });
-    return () => unsubscribe();
-  }, [activeSharedCalendarId]);
-
-  useEffect(() => {
-    if (!user) return;
-    const q = query(
-      collection(db, "fixed_tasks"),
-      where("userId", "==", user.uid),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const templates = [];
-      snapshot.forEach((document) =>
-        templates.push({ id: document.id, ...document.data() }),
-      );
-      setPersonalFixedTasks(templates);
-    });
-    return () => unsubscribe();
-  }, [user]);
-
-  useEffect(() => {
-    if (!activeSharedCalendarId || !selectedDayDate) return;
-    const q = query(
-      collection(db, "shared_tasks"),
-      where("calendarId", "==", activeSharedCalendarId),
-      where("date", "==", selectedDayDate),
-    );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = [];
-      snapshot.forEach((document) =>
-        tasksData.push({ id: document.id, ...document.data() }),
-      );
-      tasksData.sort((a, b) => {
-        if (a.isCompleted === b.isCompleted)
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        return a.isCompleted ? 1 : -1;
-      });
-      setDayTasks(tasksData);
-    });
-    return () => unsubscribe();
-  }, [activeSharedCalendarId, selectedDayDate]);
 
   const getMarkedDates = () => {
     const marks = { ...selectedDates };
@@ -316,23 +243,19 @@ export default function SchermataCalendarioCondiviso() {
     }
   };
 
-  const deleteTemplate = async (id) => {
-    if (window.confirm("Vuoi eliminare questo evento fisso personale?")) {
+  const deleteTemplate = (id) => {
+    confermaAzione("Vuoi eliminare questo evento fisso personale?", async () => {
       await deleteDoc(doc(db, "fixed_tasks", id));
       if (selectedTemplateId === id) {
         setSelectedTemplateId(null);
         setSelectedDates({});
       }
-    }
+    });
   };
 
-  const resetAllCalendarTasks = async () => {
+  const resetAllCalendarTasks = () => {
     if (allSharedTasks.length === 0) return;
-    if (
-      window.confirm(
-        `${Testi.condiviso.alertSvuotaCalendario} "${calendarName}"?`,
-      )
-    ) {
+    confermaAzione(`${Testi.condiviso.alertSvuotaCalendario} "${calendarName}"?`, async () => {
       try {
         const batch = writeBatch(db);
         allSharedTasks.forEach((t) =>
@@ -353,14 +276,12 @@ export default function SchermataCalendarioCondiviso() {
       } catch (e) {
         console.error(e);
       }
-    }
+    });
   };
 
-  const resetSpecificDayTasks = async () => {
+  const resetSpecificDayTasks = () => {
     if (!selectedDayDate || dayTasks.length === 0) return;
-    if (
-      window.confirm(`${Testi.privato.alertSvuotaOggi} ${selectedDayDate}?`)
-    ) {
+    confermaAzione(`${Testi.privato.alertSvuotaOggi} ${selectedDayDate}?`, async () => {
       try {
         const batch = writeBatch(db);
         dayTasks.forEach((dt) => batch.delete(doc(db, "shared_tasks", dt.id)));
@@ -376,7 +297,7 @@ export default function SchermataCalendarioCondiviso() {
       } catch (e) {
         console.error(e);
       }
-    }
+    });
   };
 
   const openUrl = async (url) => {
@@ -633,7 +554,8 @@ export default function SchermataCalendarioCondiviso() {
         </View>
       ) : null}
 
-      <ModaleDettagliCondiviso
+      {/* Utilizzo del Modale Unificato! */}
+      <DayDetailsModal
         visible={isDayModalVisible}
         onClose={() => setIsDayModalVisible(false)}
         date={selectedDayDate}
@@ -647,8 +569,8 @@ export default function SchermataCalendarioCondiviso() {
           setTaskToEdit(task);
           setIsTaskModalVisible(true);
         }}
-        onDeleteTask={async (taskId) => {
-          if (window.confirm(Testi.modali.alertEliminaTask)) {
+        onDeleteTask={(taskId) => {
+          confermaAzione(Testi.modali.alertEliminaTask, async () => {
             await deleteDoc(doc(db, "shared_tasks", taskId));
             await inviaNotificaIscritti({
               calendarId: activeSharedCalendarId,
@@ -657,16 +579,18 @@ export default function SchermataCalendarioCondiviso() {
               message: `${nomeUtente} ha eliminato un evento condiviso.`,
               targetDate: selectedDayDate,
             });
-          }
+          });
         }}
         onOpenUrl={openUrl}
+        isShared={true}
       />
 
-      <ModaleTaskCondiviso
+      <TaskModal
         visible={isTaskModalVisible}
         onClose={() => setIsTaskModalVisible(false)}
         selectedDate={selectedDayDate}
         taskToEdit={taskToEdit}
+        isShared={true}
       />
 
       <FixedTaskModal

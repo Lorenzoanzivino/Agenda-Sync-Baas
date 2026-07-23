@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -8,10 +8,6 @@ import {
   Linking,
 } from "react-native";
 import {
-  collection,
-  query,
-  where,
-  onSnapshot,
   doc,
   updateDoc,
   deleteDoc,
@@ -24,12 +20,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAuthStore } from "../../store/useAuthStore";
 import TaskModal from "../../components/TaskModal";
 
+import { usePrivateTasks } from "../../hooks/usePrivateTasks";
+
+// Importiamo l'utility di conferma
+import { confermaAzione } from "../../utils/alertUtils";
+
 export default function PrivateTodayScreen() {
   const { user, userData } = useAuthStore();
-  const [tasks, setTasks] = useState([]);
-  const [isModalVisible, setModalVisible] = useState(false);
-  const [taskToEdit, setTaskToEdit] = useState(null);
-
+  
   const todayObj = new Date();
   const todayFormatted = todayObj.toLocaleDateString("it-IT", {
     weekday: "long",
@@ -37,6 +35,11 @@ export default function PrivateTodayScreen() {
     month: "long",
   });
   const todayISO = todayObj.toISOString().split("T")[0]; // YYYY-MM-DD
+
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+
+  const { tasks } = usePrivateTasks(user?.uid, todayISO);
 
   const todayDayMonth = todayISO.substring(5);
   let isBirthday = false;
@@ -50,46 +53,24 @@ export default function PrivateTodayScreen() {
     }
   }
 
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(db, "private_tasks"),
-      where("userId", "==", user.uid),
-      where("date", "==", todayISO),
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const tasksData = [];
-      snapshot.forEach((document) => {
-        tasksData.push({ id: document.id, ...document.data() });
-      });
-      tasksData.sort((a, b) => {
-        if (a.isCompleted === b.isCompleted)
-          return new Date(a.createdAt) - new Date(b.createdAt);
-        return a.isCompleted ? 1 : -1;
-      });
-      setTasks(tasksData);
-    });
-
-    return () => unsubscribe();
-  }, [user, todayISO]);
-
   const toggleTaskStatus = async (task) => {
     await updateDoc(doc(db, "private_tasks", task.id), {
       isCompleted: !task.isCompleted,
     });
   };
 
-  const deleteTask = async (id) => {
-    if (window.confirm(Testi.modali.alertEliminaTask)) {
+  const deleteTask = (id) => {
+    // Uso della funzione di utilità nativa
+    confermaAzione(Testi.modali.alertEliminaTask, async () => {
       await deleteDoc(doc(db, "private_tasks", id));
-    }
+    });
   };
 
-  const resetTodayTasks = async () => {
+  const resetTodayTasks = () => {
     if (tasks.length === 0) return;
-    if (window.confirm(Testi.privato.alertSvuotaOggi)) {
+    
+    // Uso della funzione di utilità nativa
+    confermaAzione(Testi.privato.alertSvuotaOggi, async () => {
       try {
         const batch = writeBatch(db);
         tasks.forEach((t) => {
@@ -99,7 +80,7 @@ export default function PrivateTodayScreen() {
       } catch (e) {
         console.error("Errore reset oggi:", e);
       }
-    }
+    });
   };
 
   const openUrl = async (url) => {
